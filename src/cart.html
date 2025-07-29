@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Cart</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <a href="javascript:history.back()" class="back-button">← Back</a>
+        <div class="header-title">Cart</div>
+    </header>
+    <main>
+        <section id="cart-items">
+            <ul id="cart-list">
+                <!-- Dynamic cart items will be loaded here -->
+            </ul>
+            <p id="total-amount">Total Amount: $0</p>
+            <button class="submit-button" onclick="submitOrder()">Submit</button>
+        </section>
+    </main>
+    <script src="cart.js"></script>
+</body>
+</html>
