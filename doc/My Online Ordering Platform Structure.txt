@@ -1,0 +1,79 @@
+📦 My Online Ordering Platform Structure
+├── frontend/
+│   ├── customer-app/         # 顧客前台（Web SPA）
+│   │   ├── index.html
+│   │   ├── app.js
+│   │   ├── components/       # 可選使用 Web Components
+│   │   └── styles/
+│   ├── pos-app/              # 店員 POS 系統（Web SPA）
+│   │   ├── index.html
+│   │   ├── app.js
+│   │   ├── components/
+│   │   └── styles/
+│   ├── kiosk-app/            # 自助點餐機（Web SPA）
+│   │   ├── index.html
+│   │   ├── app.js
+│   │   ├── components/
+│   │   └── styles/
+│   └── merchant-admin/       # 商家管理系統（Web Components SPA）
+│       ├── index.html
+│       ├── app.js
+│       ├── router.js
+│       ├── components/
+│       └── styles/
+│
+├── backend/
+│   ├── auth-service/         # 使用者與權限服務
+│   │   ├── handler.py
+│   │   ├── requirements.txt
+│   │   └── serverless.yml
+│   ├── order-service/        # 訂單處理服務
+│   │   ├── handler.py
+│   │   ├── models/
+│   │   ├── utils/
+│   │   └── serverless.yml
+│   ├── menu-service/         # 商品與分類服務
+│   │   ├── handler.py
+│   │   ├── models/
+│   │   ├── utils/
+│   │   └── serverless.yml
+│   ├── payment-service/      # 金流整合服務
+│   │   ├── handler.py
+│   │   ├── gateways/
+│   │   └── serverless.yml
+│   ├── device-service/       # 設備管理服務
+│   │   ├── handler.py
+│   │   └── serverless.yml
+│   ├── notification-service/ # 通知與即時推播
+│   │   ├── handler.py
+│   │   └── serverless.yml
+│   ├── printer-service/      # 自動列印服務
+│   │   ├── handler.py
+│   │   ├── printer_manager.py
+│   │   ├── templates/
+│   │   ├── mqtt_client.py
+│   │   ├── utils.py
+│   │   ├── requirements.txt
+│   │   └── serverless.yml
+│   ├── shared/               # 共用模組
+│   │   ├── db.py
+│   │   ├── auth.py
+│   │   └── utils.py
+│   └── serverless.yml        # 全域設定（可選）
+│
+├── database/
+│   ├── schema.sql            # 資料庫 schema
+│   └── migrations/           # 資料庫版本管理
+│
+├── realtime/
+│   └── websocket-server/     # WebSocket 即時通訊（Node.js 或 Python）
+│
+├── infra/
+│   ├── docker/               # 本地開發容器（可選）
+│   ├── nginx/                # 反向代理與 SSL（可選）
+│   └── monitoring/           # 監控（CloudWatch / Prometheus）
+│
+└── docs/
+    ├── api-specs/            # Swagger / OpenAPI 文件
+    ├── architecture/         # 架構圖與流程圖
+    └── user-manual/          # 使用者與商家操作手冊
