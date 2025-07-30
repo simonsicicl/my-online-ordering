@@ -31,7 +31,7 @@ class NavMenu extends HTMLElement {
           flex-direction: column;
           background: #23272f;
           padding: 20px 0;
-          min-width: 200px;
+          min-width: 250px;
           height: 100%;
           box-sizing: border-box;
         }
@@ -50,7 +50,7 @@ class NavMenu extends HTMLElement {
           color: #d1d5db;
           text-decoration: none;
           padding: 12px 24px;
-          font-size: 16px;
+          font-size: 14px;
           border-radius: 6px;
           margin: 2px 8px;
           transition: background 0.2s, color 0.2s;
@@ -67,7 +67,7 @@ class NavMenu extends HTMLElement {
         .divider {
           height: 1px;
           background: #444;
-          margin: 16px 0;
+          margin: 10px 0;
         }
         .icon {
           font-size: 1.1em;

@@ -17,7 +17,7 @@ class AppShell extends HTMLElement {
           font-family: sans-serif;
         }
         nav-menu {
-          width: 200px;
+          width: 250px;
           height: 100vh;
           display: block;
           background: #333;
