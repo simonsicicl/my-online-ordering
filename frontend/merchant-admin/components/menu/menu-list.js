@@ -1,7 +1,14 @@
 // Product list component for merchant admin system
 
 class MenuList extends HTMLElement {
-  // Receive menu data from parent/app.js
+  constructor() {
+    super();
+    this._menu = [];
+    this._categories = [];
+    this._tags = [];
+  }
+  
+  // --- Data setters/getters ---
   set menu(data) {
     this._menu = data || [];
     this.renderProductTable();
@@ -13,56 +20,63 @@ class MenuList extends HTMLElement {
   get categories() { return this._categories || []; }
   get tags() { return this._tags || []; }
 
+  // --- Lifecycle methods ---
   /**
-   * Initialize component: attach shadow DOM and render initial state
+   * Called when the element is added to the DOM.
+   * Renders initial UI and sets up event listeners.
    */
   connectedCallback() {
-    // Only responsible for rendering, does not initialize data
     this.render();
     this.renderProductTable();
-    // Monitor resize to re-render product table
+    // Bind resize event to re-render table on window size change
     this._resizeHandler = () => this.renderProductTable();
     window.addEventListener('resize', this._resizeHandler);
   }
 
+  /**
+   * Called when the element is removed from the DOM.
+   * Cleans up event listeners to prevent memory leaks.
+   */
   disconnectedCallback() {
-    // Remove resize event listener when component is removed
     window.removeEventListener('resize', this._resizeHandler);
   }
 
+  // --- Render methods ---
   /**
-   * Render the main product list panel with header and table container
+   * Renders the main product list panel and table container.
+   * Also binds the Add button click handler.
    */
   render() {
-    // Render the product list panel and table container
     this.innerHTML = this.getHTML();
-    // Add Add button click handler
+    // Bind add product button event
     this.querySelector('#addBtn').onclick = () => this.handleAddClick();
   }
 
   /**
-   * Render the product table with current menu data
+   * Renders the product table with current menu data.
+   * If no menu data, shows empty message.
    */
   renderProductTable() {
     const tableContainer = this.querySelector('#table');
-    // If no table container found, do nothing
+    // If table container not found, exit
     if (!tableContainer) return;
-    // If no menu data, show empty message
+    // If menu is empty, show empty table message
     if (!this.menu || this.menu.length === 0) {
       tableContainer.innerHTML = this.getEmptyTableHTML();
       return;
     }
-    // Create table element and populate with product data
+    // Create table element and fill with data
     const table = document.createElement('table');
-    // Render table header and body
     table.innerHTML = this.getTableHTML();
-    // Add event listeners for edit, delete, and toggle buttons
+    // Bind edit button events
     table.querySelectorAll('.editBtn').forEach(btn => {
       btn.onclick = () => this.handleEditClick(btn);
     });
+    // Bind delete button events
     table.querySelectorAll('.deleteBtn').forEach(btn => {
       btn.onclick = () => this.handleDeleteClick(btn);
     });
+    // Bind toggle availability button events
     table.querySelectorAll('.toggle-btn').forEach(btn => {
       btn.onclick = () => this.handleToggleClick(btn);
     });
@@ -71,97 +85,103 @@ class MenuList extends HTMLElement {
     tableContainer.appendChild(table);
   }
 
+  // --- Event handlers ---
   /**
-   * Handle Add button click: navigate to product editor for new product
+   * Navigates to product editor for creating a new product.
+   * @param {Event} e
    */
   handleAddClick() {
     window.location.hash = `/menu/edit/0`;
   }
+
   /**
-   * Handle Edit button click: navigate to product editor with item_id
+   * Navigates to product editor for the specified item.
+   * @param {HTMLElement} btn
    */
   handleEditClick(btn) {
     window.location.hash = `/menu/edit/${btn.dataset.id}`;
   }
+
   /**
-   * Handle Delete button click: confirm and delete product
+   * Confirms and deletes the product.
+   * @param {HTMLElement} btn
    */
   handleDeleteClick(btn) {
     this.deleteProduct(btn.dataset.id);
   }
+
   /**
-   * Handle toggle button click: toggle product availability
+   * Toggles product availability.
+   * @param {HTMLElement} btn
    */
   handleToggleClick(btn) {
     const idx = btn.getAttribute('data-idx');
+    // Toggle product availability status
     this.menu[idx].is_available = !this.menu[idx].is_available;
     this.renderProductTable();
   }
 
+  // --- Utility methods ---
   /**
-   * Get category name by category_id
+   * Gets category name by category_id.
+   * @param {number} category_id
+   * @return {string}
    */
   getCategoryName(category_id) {
+    // Find category name by id
     const cat = this.categories.find(c => c.category_id === category_id);
     return cat ? cat.name : '';
   }
 
   /**
-   * Get tag names by tag_ids
+   * Gets tag objects by tag_ids.
+   * @param {Array} tagIds
+   * @return {Array}
    */
   getTagNames(tagIds = []) {
+    // Map tag ids to tag objects, return default if not found
     return tagIds.map(id => {
       const tag = this.tags.find(t => t.tag_id === id);
-      if (tag) 
+      if (tag)
         return { tag_id: tag.tag_id, name: tag.name, color: tag.color };
       else {
         console.error(`Tag with id ${id} not found`);
-        return { tag_id: null, name: '', color: '#ccc' }; // Default for missing tags
+        return { tag_id: null, name: '', color: '#ccc' };
       }
-      
     });
   }
-  
+
   /**
-   * Delete a product by item_id after confirmation
-   * @param {number} id - The item_id of the product to delete
+   * Deletes a product by item_id after confirmation.
+   * @param {number} id
    */
   deleteProduct(id) {
+    // Confirm before deleting product
     if (confirm('Delete this product?')) {
+      // Remove product with specified id
       this.menu = this.menu.filter(p => p.item_id != id);
       this.renderProductTable();
     }
   }
 
+  // --- HTML generators ---
   /**
-   * Generate HTML for the empty menu table
-   * Displays a message when no products are available
+   * Returns HTML for empty table message.
+   * @return {string}
    */
   getEmptyTableHTML() {
     return `
-      <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 220px;
-        color: #888;
-        font-size: 1.3em;
-        font-weight: bold;
-        background: #f9fafb;
-        border-radius: 30px;
-        border: 2px dashed #e5e7eb;
-        margin: 24px 0;
-      ">
-        <span style="font-size:2.5em; margin-bottom: 12px;">📦</span>
+      <div class="empty-table-message">
+        <span class="empty-icon">📦</span>
         No products found.
-        Please click <a style="color:#2563eb;" href="#/menu/edit/0">Add Product</a> to create one!
+        Please click <a href="#/menu/edit/0">Add Product</a> to create one!
       </div>
     `;
   }
 
   /**
-   * Generate HTML for the product list panel
+   * Returns HTML for the product list panel.
+   * @return {string}
    */
   getHTML() {
     return `
@@ -175,35 +195,51 @@ class MenuList extends HTMLElement {
   }
 
   /**
-   * Generate HTML for the product table
-   * Uses template literals for better readability
+   * Returns HTML for the product table (responsive).
+   * @return {string}
    */
   getTableHTML() {
-    if (window.innerWidth <= 768) {
-      // Mobile: actions fixed right
-      return `
-        <tbody>
-          ${this.menu.map((item, idx) => `
-            <tr>
-              <td colspan="7" style="padding:0;">
-                <div class="product-card">
-                  <img src="${item.image_url}" alt="${item.name}" class="product-card-img">
-                  <div class="product-card-info">
-                    <div class="product-card-title">${item.name}</div>
-                    <div class="product-card-price">$${item.price}</div>
-                    ${!item.is_available ? `<div class="product-card-unavailable">Unavailable</div>` : ''}
-                  </div>
-                  <div class="product-card-actions">
-                    <button class="action-btn editBtn" data-id="${item.item_id}" title="Edit">✏️</button>
-                    <button class="action-btn deleteBtn" data-id="${item.item_id}" title="Delete">🗑️</button>
-                  </div>
+    // Switch between desktop and mobile table based on screen width
+    if (window.innerWidth <= 768)
+      return this.getMobileTableHTML();
+    else
+      return this.getDesktopTableHTML();
+  }
+
+  /**
+   * Returns HTML for the mobile product table (card layout).
+   * @return {string}
+   */
+  getMobileTableHTML() {
+    return `
+      <tbody>
+        ${this.menu.map((item, idx) => `
+          <tr>
+            <td colspan="7" style="padding:0;">
+              <div class="product-card">
+                <img src="${item.image_url}" alt="${item.name}" class="product-card-img">
+                <div class="product-card-info">
+                  <div class="product-card-title">${item.name}</div>
+                  <div class="product-card-price">$${item.price}</div>
+                  ${!item.is_available ? `<div class="product-card-unavailable">Unavailable</div>` : ''}
                 </div>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      `;
-    }
+                <div class="product-card-actions">
+                  <button class="action-btn editBtn" data-id="${item.item_id}" title="Edit">✏️</button>
+                  <button class="action-btn deleteBtn" data-id="${item.item_id}" title="Delete">🗑️</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    `;
+  }
+
+  /**
+   * Returns HTML for the desktop product table (full table view).
+   * @return {string}
+   */
+  getDesktopTableHTML() {
     return `
       <thead>
         <tr>

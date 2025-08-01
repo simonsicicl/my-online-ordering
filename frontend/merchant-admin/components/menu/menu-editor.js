@@ -1,6 +1,7 @@
 // Product editor component for merchant admin system
 
 class MenuEditor extends HTMLElement {
+  // --- Data setters/getters ---
   set menu(data) { this._menu = data || []; }
   set categories(data) { this._categories = data || []; }
   set tags(data) { this._tags = data || []; }
@@ -9,19 +10,24 @@ class MenuEditor extends HTMLElement {
   get categories() { return this._categories || []; }
   get tags() { return this._tags || []; }
 
-    /**
-   * Lifecycle method called when the element is added to the DOM
+  // --- Lifecycle methods ---
+  /**
+   * Called when the element is added to the DOM.
+   * Renders the product editor UI.
    */
   connectedCallback() {
     this.renderEditor();
   }
+
+  // --- Render methods ---
   /**
-   * Render the product editor UI based on the current item_id
-   * If item_id is "0", it creates a new product template.
-   * Otherwise, it fetches the product data by item_id.
+   * Renders the product editor UI based on the current item_id.
+   * If item_id is "0", creates a new product template.
+   * Otherwise, fetches the product data by item_id.
    */
   renderEditor() {
     const itemId = this.getAttribute('id');
+    // Get product data or new template
     let product = itemId === "0" ? this.getNewProductTemplate() : this.getProductById(itemId);
     if (!product) {
       this.innerHTML = `<h2>Product Editor</h2><p>Product not found.</p>`;
@@ -31,24 +37,26 @@ class MenuEditor extends HTMLElement {
     // Set the title based on whether it's a new product or editing existing
     const title = itemId === "0" ? 'New Product' : `Editing: ${product.name}`;
     this.querySelector('h2').textContent = title;
-    // Bind form submit and cancel button
+    // Bind form submit event
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, product);
-
+    // Bind cancel button event
     const cancelBtn = this.querySelector('#cancelBtn');
     if (cancelBtn) cancelBtn.onclick = (e) => this.cancelEventHandler(e);
   }
 
+  // --- Event handlers ---
   /**
-   * Handle form submission to save product data
+   * Handles form submission to save product data.
+   * Gathers form input values, updates the product object,
+   * and dispatches a custom 'save' event with the updated product data.
    * @param {Event} e - The submit event
    * @param {Object} product - The current product data being edited
-   * * This method gathers form input values, updates the product object,
-   * and dispatches a custom 'save' event with the updated product data.
    */
   saveEventHandler(e, product) {
     e.preventDefault();
     const now = new Date().toISOString();
+    // Gather updated product data from form fields
     const updated = {
       ...product,
       name: this.querySelector('#name').value,
@@ -62,21 +70,22 @@ class MenuEditor extends HTMLElement {
       updated_at: now,
       created_at: product.created_at || now
     };
+    // Dispatch save event with updated product
     this.dispatchEvent(new CustomEvent('save', { detail: updated }));
   }
+
   /**
-   * Handle cancel button click: navigate back to menu list
+   * Handles cancel button click: navigates back to menu list.
    * @param {Event} e - The click event
-   * This method changes the window location hash to navigate back to the menu list.
    */
   cancelEventHandler(e) {
     window.location.hash = '/menu/list';
   }
+
+  // --- Utility methods ---
   /**
-   * Get a new product template with default values
+   * Returns a new product template with default values.
    * @return {Object} The new product template object
-   * This method returns a product object with default values for creating a new product.
-   * It includes fields like item_id, name, price, category_id, availability status, and timestamps.
    */
   getNewProductTemplate() {
     const now = new Date().toISOString();
@@ -96,22 +105,21 @@ class MenuEditor extends HTMLElement {
       option_groups: []
     };
   }
+
   /**
-   * Get product by item_id from the menu
+   * Gets product by item_id from the menu.
    * @param {number} id - The item_id of the product to retrieve
    * @return {Object|null} The product object or null if not found
-   * This method searches the menu for a product with the specified item_id.
-   * If found, it returns the product object; otherwise, it returns null.
    */
   getProductById(id) {
     return this._menu.find(p => String(p.item_id) === String(id));
   }
 
-
+  // --- HTML generators ---
   /**
-   * Generate HTML for the product editor form
+   * Generates HTML for the product editor form.
    * @param {Object} product - The product data
-   * @returns {string} The HTML string for the form
+   * @return {string} The HTML string for the form
    */
   getHTML(product) {
     // Format date for display
@@ -178,7 +186,5 @@ class MenuEditor extends HTMLElement {
     `;
   }
 }
-
-
 
 customElements.define('menu-editor', MenuEditor);

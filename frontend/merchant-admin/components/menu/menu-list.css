@@ -88,6 +88,27 @@ img {
 .toggle-btn.active .toggle-knob {
     left: 26px;
 }
+.empty-table-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 220px;
+  color: #888;
+  font-size: 1.3em;
+  font-weight: bold;
+  background: #f9fafb;
+  border-radius: 30px;
+  border: 2px dashed #e5e7eb;
+  margin: 24px 0;
+}
+.empty-table-message .empty-icon {
+  font-size: 2.5em;
+  margin-bottom: 12px;
+}
+.empty-table-message a {
+  color: #2563eb;
+}
 @media (max-width: 768px) {
   .product-card {
     display: flex;

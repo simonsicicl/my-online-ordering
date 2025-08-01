@@ -1,6 +1,7 @@
 // router.js
 // Simple hash-based router for merchant admin SPA
 
+// Ensure there is always a hash in the URL
 if (!location.hash) location.hash = '/';
 
 // Route table: maps hash paths to component file paths
@@ -22,11 +23,16 @@ export const routes = {
   '/nav-menu': 'layout/nav-menu'
 };
 
-// Match route and extract params from dynamic segments
+/**
+ * Matches a given path to a route pattern and extracts dynamic params.
+ * Returns the matched component path and params if found, otherwise null.
+ * @param {string} path - The hash path to match (e.g. '/menu/edit/123')
+ * @return {Object|null} An object with { componentPath, params } or null if no match
+ */
 export function matchRoute(path) {
   for (const pattern in routes) {
     const paramNames = [];
-    // Convert route pattern to regex, extract param names
+    // Convert route pattern to regex, extract param names (e.g. :id)
     const regexPattern = pattern.replace(/:([^/]+)/g, (_, key) => {
       paramNames.push(key);
       return '([^/]+)';
@@ -35,6 +41,7 @@ export function matchRoute(path) {
     const match = path.match(regex);
     if (match) {
       const params = {};
+      // Map matched values to param names
       paramNames.forEach((key, i) => {
         params[key] = match[i + 1];
       });

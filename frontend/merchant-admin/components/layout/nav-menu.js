@@ -7,9 +7,13 @@ class NavMenu extends HTMLElement {
     this.attachShadow({ mode: 'open' });
   }
 
+  /**
+   * Called when the element is added to the DOM.
+   * Renders the menu and sets up navigation event listeners.
+   */
   connectedCallback() {
-    // Initial render and event listeners for navigation
     this.render();
+    // Listen for navigation link clicks
     this.shadowRoot.addEventListener('click', (e) => {
       const link = e.target.closest('a[data-href]');
       if (link) {
@@ -22,60 +26,14 @@ class NavMenu extends HTMLElement {
     window.addEventListener('hashchange', () => this.render());
   }
 
+  /**
+   * Renders the sidebar menu with navigation links.
+   */
   render() {
-    // Render sidebar menu with navigation links
     const isMobile = this.hasAttribute('data-mobile');
+    // Render sidebar menu HTML and styles
     this.shadowRoot.innerHTML = `
-      <style>
-        nav {
-          display: flex;
-          flex-direction: column;
-          background: #23272f;
-          padding: 20px 0;
-          min-width: 250px;
-          height: 100%;
-          box-sizing: border-box;
-        }
-        .logo {
-          font-size: 1.4em;
-          font-weight: bold;
-          color: #fff;
-          text-align: center;
-          margin-bottom: 24px;
-          letter-spacing: 2px;
-        }
-        a {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          color: #d1d5db;
-          text-decoration: none;
-          padding: 12px 24px;
-          font-size: 14px;
-          border-radius: 6px;
-          margin: 2px 8px;
-          transition: background 0.2s, color 0.2s;
-        }
-        a.active {
-          background: #374151;
-          color: #fff;
-          font-weight: bold;
-        }
-        a:hover {
-          background: #2d3340;
-          color: #fff;
-        }
-        .divider {
-          height: 1px;
-          background: #444;
-          margin: 10px 0;
-        }
-        .icon {
-          font-size: 1.1em;
-          width: 22px;
-          text-align: center;
-        }
-      </style>
+      <link rel="stylesheet" href="./components/layout/nav-menu.css" />
       <nav>
         ${!isMobile ? `<div class="logo">Merchant Admin</div>` : ''}
         <a data-href="/" class="${this.isActive('/')}"><span class="icon">🏠</span>Dashboard</a>
@@ -98,9 +56,10 @@ class NavMenu extends HTMLElement {
   /**
    * Returns 'active' if the route matches the current hash.
    * @param {string} route - The route to check.
-   * @returns {string} CSS class name for active state.
+   * @return {string} CSS class name for active state.
    */
   isActive(route) {
+    // Compare current hash with route to determine active state
     return window.location.hash.replace('#', '') === route ? 'active' : '';
   }
 }
