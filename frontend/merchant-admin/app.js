@@ -1,6 +1,14 @@
 import { matchRoute } from './router.js';
 import './components/layout/app-shell.js';
 import './components/layout/nav-menu.js';
+import { restaurantDataExample } from './example-data.js';
+
+// Initialize global menu data, can be replaced with API data in the future
+window._menuData = {
+  menu: restaurantDataExample.menu,
+  categories: restaurantDataExample.categories,
+  tags: restaurantDataExample.tags
+};
 
 // Main application entry point for merchant admin SPA
 class MerchantApp extends HTMLElement {
@@ -40,6 +48,31 @@ class MerchantApp extends HTMLElement {
     if (match.params) {
       Object.entries(match.params).forEach(([key, value]) => {
         el.setAttribute(key, value);
+      });
+    }
+
+    // Pass menu data to menu-list and menu-editor
+    if (componentName === 'menu-list' || componentName === 'menu-editor') {
+      el.categories = window._menuData.categories;
+      el.tags = window._menuData.tags;
+      el.menu = window._menuData.menu;
+    }
+
+    // Listen for the save event from menu-editor
+    if (componentName === 'menu-editor') {
+      el.addEventListener('save', (e) => {
+        const updated = e.detail;
+        // Add or update menu data
+        const idx = window._menuData.menu.findIndex(p => p.item_id === updated.item_id);
+        if (idx > -1) {
+          window._menuData.menu[idx] = updated; // Update
+        } else {
+          // Add new item (generate new item_id)
+          updated.item_id = Date.now(); // You can use a better id generation method
+          window._menuData.menu.push(updated);
+        }
+        // Switch back to the product list page
+        window.location.hash = '/menu/list';
       });
     }
 

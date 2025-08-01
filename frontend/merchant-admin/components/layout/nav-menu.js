@@ -24,6 +24,7 @@ class NavMenu extends HTMLElement {
 
   render() {
     // Render sidebar menu with navigation links
+    const isMobile = this.hasAttribute('data-mobile');
     this.shadowRoot.innerHTML = `
       <style>
         nav {
@@ -76,7 +77,7 @@ class NavMenu extends HTMLElement {
         }
       </style>
       <nav>
-        <div class="logo">Merchant Admin</div>
+        ${!isMobile ? `<div class="logo">Merchant Admin</div>` : ''}
         <a data-href="/" class="${this.isActive('/')}"><span class="icon">🏠</span>Dashboard</a>
         <a data-href="/menu" class="${this.isActive('/menu')}"><span class="icon">📦</span>Product Management</a>
         <a data-href="/categories" class="${this.isActive('/categories')}"><span class="icon">🗂️</span>Category Management</a>

@@ -1,0 +1,90 @@
+.editor-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 32px 24px;
+    max-width: 800px;
+    margin: 32px auto;
+}
+.editor-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+@media (min-width: 950px) {
+    .editor-sections {
+    flex-direction: row;
+    gap: 48px;
+    }
+    .editor-section {
+    flex: 1;
+    }
+}
+.editor-section {
+    min-width: 0;
+}
+h2 {
+    margin-top: 0;
+    font-size: 1.5em;
+}
+label {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+input[type="text"], input[type="number"], textarea, select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 1em;
+    box-sizing: border-box;
+}
+textarea {
+    min-height: 60px;
+}
+.tag-list label {
+    margin-right: 8px;
+    font-weight: normal;
+}
+.tag-badge {
+    background: #2563eb;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 4px;
+    font-size: 0.95em;
+}
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 18px;
+}
+.save-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.save-btn:hover {
+    background: #1e40af;
+}
+.cancel-btn {
+    background: #f3f4f6;
+    color: #333;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.cancel-btn:hover {
+    background: #e0e7ef;
+}

@@ -7,6 +7,7 @@ if (!location.hash) location.hash = '/';
 export const routes = {
   '/': 'dashboard/merchant-dashboard',
   '/menu': 'menu/menu-list',
+  '/menu/list': 'menu/menu-list',
   '/menu/edit/:id': 'menu/menu-editor',
   '/categories': 'menu/category-manager',
   '/orders': 'orders/order-list',
