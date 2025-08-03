@@ -129,7 +129,7 @@ class MenuList extends HTMLElement {
    */
   getCategoryName(category_id) {
     // Find category name by id
-    const cat = this.categories.find(c => c.category_id === category_id);
+    const cat = this.categories.find(c => String(c.category_id) === String(category_id));
     return cat ? cat.name : '';
   }
 

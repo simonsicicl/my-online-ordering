@@ -57,11 +57,9 @@ class AppShell extends HTMLElement {
     const isMobile = window.innerWidth <= 768;
     if (isMobile !== this._lastIsMobile) {
       this._lastIsMobile = isMobile;
-      // Only re-bind events when switching layout mode
       this.bindEvents();
+      this.updateMenuDisplay();
     }
-    // Always update menu display on resize
-    this.updateMenuDisplay();
   }
 
   // --- Rendering ---

@@ -7,7 +7,8 @@ import { restaurantDataExample } from './example-data.js';
 window._menuData = {
   menu: restaurantDataExample.menu,
   categories: restaurantDataExample.categories,
-  tags: restaurantDataExample.tags
+  tags: restaurantDataExample.tags,
+  option_groups: restaurantDataExample.option_groups
 };
 
 /**
@@ -66,6 +67,7 @@ class MerchantApp extends HTMLElement {
     if (componentName === 'menu-list' || componentName === 'menu-editor') {
       el.categories = window._menuData.categories;
       el.tags = window._menuData.tags;
+      el.option_groups = window._menuData.option_groups;
       el.menu = window._menuData.menu;
     }
 

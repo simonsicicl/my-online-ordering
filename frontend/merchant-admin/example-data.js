@@ -8,6 +8,48 @@ export const restaurantDataExample = {
         created_at: "2025-07-28T00:00:00Z",
         is_active: true
     },
+    option_groups: [
+        {
+            option_group_id: 201,
+            is_universal: true,
+            group_name: "甜度",
+            is_multiple: false,
+            universal_name: "通用甜度群組",
+            default_option_id: 301,
+            is_visible_on_order: true,
+            options: [
+                { option_id: 301, option_name: "正常糖", price_delta: 0, is_active: true },
+                { option_id: 302, option_name: "半糖", price_delta: 0, is_active: true },
+                { option_id: 303, option_name: "無糖", price_delta: 0, is_active: true }
+            ]
+        },
+        {
+            option_group_id: 202,
+            is_universal: true,
+            group_name: "加料",
+            is_multiple: true,
+            universal_name: "通用加料群組",
+            default_option_id: null,
+            is_visible_on_order: true,
+            options: [
+                { option_id: 304, option_name: "加珍珠", price_delta: 10, is_active: true },
+                { option_id: 305, option_name: "加椰果", price_delta: 10, is_active: true }
+            ]
+        },
+        {
+            option_group_id: 203,
+            is_universal: false,
+            group_name: "甜度",
+            is_multiple: false,
+            default_option_id: 306,
+            is_visible_on_order: true,
+            options: [
+                { option_id: 306, option_name: "正常糖", price_delta: 0, is_active: true },
+                { option_id: 307, option_name: "半糖", price_delta: 0, is_active: true },
+                { option_id: 308, option_name: "無糖", price_delta: 0, is_active: true }
+            ]
+        }
+    ],
     categories: [
         {
             category_id: 101,
@@ -58,43 +100,13 @@ export const restaurantDataExample = {
             created_at: "2025-07-01T00:00:00Z",
             updated_at: "2025-07-15T00:00:00Z",
             tags: [1, 2],
-            option_groups: [
-                {
-                    option_group_id: 201,
-                    group_name: "甜度",
-                    is_required: true,
-                    is_multiple: false,
-                    is_template: false,
-                    template_name: "",
-                    default_option_id: 301,
-                    is_visible_on_order: true,
-                    options: [
-                        { option_id: 301, option_name: "正常糖", price_delta: 0, is_active: true },
-                        { option_id: 302, option_name: "半糖", price_delta: 0, is_active: true },
-                        { option_id: 303, option_name: "無糖", price_delta: 0, is_active: true }
-                    ]
-                },
-                {
-                    option_group_id: 202,
-                    group_name: "加料",
-                    is_required: false,
-                    is_multiple: true,
-                    is_template: false,
-                    template_name: "",
-                    default_option_id: null,
-                    is_visible_on_order: true,
-                    options: [
-                        { option_id: 304, option_name: "加珍珠", price_delta: 10, is_active: true },
-                        { option_id: 305, option_name: "加椰果", price_delta: 10, is_active: true }
-                    ]
-                }
-            ]
+            option_groups: [201, 202]
         },
         {
             item_id: 1002,
             name: "下午茶套餐",
             description: "含飲料與甜點的組合",
-            price: 100.0,
+            price: 110.0,
             category_id: 102,
             is_available: true,
             is_combo: true,
@@ -108,13 +120,31 @@ export const restaurantDataExample = {
                     item_group_id: 501,
                     group_name: "飲料",
                     quantity: 1,
-                    items: [1001, 1004] // 只列出 item_id
+                    items: [
+                        {
+                            item_id: 1001,
+                            price_delta: 10
+                        },
+                        {
+                            item_id: 1004,
+                            price_delta: 0
+                        }
+                    ]
                 },
                 {
                     item_group_id: 502,
                     group_name: "甜點",
                     quantity: 1,
-                    items: [1003, 1005]
+                    items: [
+                        {
+                            item_id: 1003,
+                            price_delta: 0
+                        },
+                        {
+                            item_id: 1005,
+                            price_delta: 5
+                        }
+                    ]
                 }
             ]
         },
@@ -146,23 +176,7 @@ export const restaurantDataExample = {
             created_at: "2025-07-08T00:00:00Z",
             updated_at: "2025-07-20T00:00:00Z",
             tags: [],
-            option_groups: [
-                {
-                    option_group_id: 203,
-                    group_name: "甜度",
-                    is_required: true,
-                    is_multiple: false,
-                    is_template: false,
-                    template_name: "",
-                    default_option_id: 306,
-                    is_visible_on_order: true,
-                    options: [
-                        { option_id: 306, option_name: "正常糖", price_delta: 0, is_active: true },
-                        { option_id: 307, option_name: "半糖", price_delta: 0, is_active: true },
-                        { option_id: 308, option_name: "無糖", price_delta: 0, is_active: true }
-                    ]
-                }
-            ]
+            option_groups: [203]
         },
         {
             item_id: 1005,

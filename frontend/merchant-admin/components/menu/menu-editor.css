@@ -1,90 +1,470 @@
+/* ==========================================================================
+   Menu Editor Component Styles
+   ========================================================================== */
+
+/* Main container for the product editor */
 .editor-container {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    padding: 32px 24px;
-    max-width: 800px;
+    max-width: 900px;
     margin: 32px auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    padding: 32px 24px 24px 24px;
 }
-.editor-sections {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-}
-@media (min-width: 950px) {
-    .editor-sections {
-    flex-direction: row;
-    gap: 48px;
-    }
-    .editor-section {
-    flex: 1;
-    }
-}
-.editor-section {
-    min-width: 0;
-}
+
+/* Page title styling */
 h2 {
     margin-top: 0;
-    font-size: 1.5em;
+    font-size: 1.8em;
+    color: #23272f;
+    letter-spacing: 1px;
 }
+
+/* ==========================================================================
+   Form Layout and Sections
+   ========================================================================== */
+
+/* Two-column layout for main form sections */
+.editor-sections {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 32px;
+}
+
+.editor-section {
+    flex: 1 1 320px;
+    min-width: 380px;
+}
+
+/* Form label styling */
 label {
     display: block;
     margin-bottom: 12px;
-    font-weight: 600;
+    font-weight: 500;
+    color: #23272f;
 }
-input[type="text"], input[type="number"], textarea, select {
+
+/* ==========================================================================
+   Form Input Elements
+   ========================================================================== */
+
+/* Base styling for all form inputs */
+input[type="text"], 
+input[type="number"], 
+textarea, 
+select {
     width: 100%;
-    padding: 8px;
+    padding: 6px 10px;
     margin-top: 4px;
-    margin-bottom: 12px;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
+    margin-bottom: 4px;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
     font-size: 1em;
     box-sizing: border-box;
 }
+
+/* Textarea specific styling */
 textarea {
     min-height: 60px;
+    resize: vertical;
 }
-.tag-list label {
-    margin-right: 8px;
-    font-weight: normal;
+
+/* Input focus states */
+input[type="text"]:focus, 
+input[type="number"]:focus, 
+textarea:focus, 
+select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
-.tag-badge {
-    background: #2563eb;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 4px;
-    margin-left: 4px;
-    font-size: 0.95em;
+
+/* Right-align number inputs for better UX */
+input[type="number"] {
+    text-align: right;
 }
+/* ==========================================================================
+   Buttons and Form Actions
+   ========================================================================== */
+
+/* Form action buttons container */
 .form-actions {
+    margin-top: 24px;
     display: flex;
     gap: 12px;
-    margin-top: 18px;
+    justify-content: flex-end;
 }
-.save-btn {
+
+/* Base button styling */
+.save-btn, 
+.cancel-btn, 
+.btn-primary, 
+.btn-secondary, 
+.btn-danger {
+    padding: 8px 18px;
+    border-radius: 6px;
+    border: none;
+    font-size: 1em;
+    cursor: pointer;
+    margin-right: 8px;
+    transition: all 0.2s ease;
+}
+
+/* Primary button styling (Save, Add actions) */
+.save-btn, 
+.btn-primary {
     background: #2563eb;
     color: #fff;
-    border: none;
-    padding: 8px 18px;
-    border-radius: 6px;
-    font-size: 1em;
-    cursor: pointer;
-    transition: background 0.2s;
 }
-.save-btn:hover {
-    background: #1e40af;
-}
+
+/* Secondary button styling (Cancel, neutral actions) */
 .cancel-btn {
-    background: #f3f4f6;
-    color: #333;
-    border: none;
-    padding: 8px 18px;
-    border-radius: 6px;
-    font-size: 1em;
-    cursor: pointer;
-    transition: background 0.2s;
+    background: #e5e7eb;
+    color: #23272f;
 }
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #23272f;
+}
+
+/* Danger button styling (Delete, Remove actions) */
+.btn-danger {
+    background: #ef4444;
+    color: #fff;
+}
+
+/* Button hover effects */
+.save-btn:hover, 
+.btn-primary:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
 .cancel-btn:hover {
-    background: #e0e7ef;
+    background: #d1d5db;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.btn-danger:hover:not([disabled]) {
+    background: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+/* Disabled button states */
+button[disabled], 
+.btn-danger[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+    transform: none !important;
+    box-shadow: none !important;
+}
+/* ==========================================================================
+   Option Groups and Combo Groups Layout
+   ========================================================================== */
+
+/* Main container for option/combo group sections */
+.editor-block {
+    margin-top: 32px;
+    margin-bottom: 32px;
+    padding: 20px 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+
+/* Section titles (h3) styling */
+.editor-block h3 {
+    margin: 0 0 16px 0;
+    font-size: 1.3em;
+    color: #1e293b;
+    font-weight: 600;
+}
+
+/* Individual group containers */
+.editor-subblock {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: #fff;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    transition: box-shadow 0.2s ease;
+}
+
+/* Hover effect for group containers */
+.editor-subblock:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+/* Group header styling (contains title and remove button) */
+.option-group-header, 
+.combo-group-header {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.option-group-header label, 
+.combo-group-header label {
+    font-size: 1.05em;
+    flex: 1;
+}
+
+/* Content areas for options and combo items */
+.option-list, 
+.combo-item-list {
+    margin-left: 8px;
+}
+
+/* Subheading styling (h4) for item lists */
+.combo-item-list h4 {
+    margin: 8px 0 12px 0;
+    font-size: 1.1em;
+    color: #374151;
+    font-weight: 500;
+}
+/* ==========================================================================
+   Option and Combo Item Rows
+   ========================================================================== */
+
+/* Individual item row styling (contains form controls) */
+.option-row, 
+.combo-item-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    background: #fafbfc;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #f0f1f3;
+}
+
+/* Labels within item rows */
+.option-row label, 
+.combo-item-row label {
+    margin-bottom: 0;
+    min-width: 100px;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    flex-shrink: 0; /* Prevent label compression */
+}
+
+/* Combo item specific styling */
+.combo-item-row select {
+    flex: 1;
+    min-width: 120px;
+}
+
+.combo-item-row input[type="number"] {
+    flex-shrink: 0;
+    width: 70px;
+}
+
+/* ==========================================================================
+   Price Input with Dollar Sign Styling
+   ========================================================================== */
+
+/* Container for price input with $ symbol */
+.combo-item-row span[style*="display:inline-flex"] {
+    display: inline-flex;
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 1px 6px 1px 4px;
+    border: 1px solid #e9ecef;
+    font-weight: 500;
+    color: #495057;
+}
+
+/* Dollar sign styling */
+.combo-item-row span[style*="display:inline-flex"] span {
+    font-weight: 600;
+    color: #28a745;
+}
+
+/* ==========================================================================
+   Special Button Styling
+   ========================================================================== */
+
+/* Remove buttons with icons (trash cans) */
+.remove-combo-item-btn, 
+.remove-custom-option-btn {
+    font-size: 1.1em;
+    padding: 6px 10px;
+    min-width: 34px;
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+/* Hover effect for remove buttons */
+.remove-combo-item-btn:hover:not([disabled]) {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+/* ==========================================================================
+   Custom Option Groups Styling
+   ========================================================================== */
+
+/* List styling for custom options */
+.custom-option-group-editor ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+}
+
+/* Individual custom option items */
+.custom-option-group-editor li {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+/* ==========================================================================
+   Universal Option Groups Styling
+   ========================================================================== */
+
+/* List styling for universal options */
+.option-group ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0;
+}
+
+/* Individual universal option items */
+.option-group li {
+    padding: 4px 0;
+    color: #6b7280;
+}
+
+/* ==========================================================================
+   Special Labels and Badges
+   ========================================================================== */
+
+/* Custom group identifier label */
+.custom-group-label {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+/* Tag system styling */
+.tag-list label {
+    display: inline-block;
+    margin-right: 10px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+/* Hover effect for tag labels */
+.tag-list label:hover {
+    transform: translateY(-1px);
+}
+
+/* Tag badge styling */
+.tag-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.9em;
+    margin-left: 6px;
+    color: #fff;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+/* ==========================================================================
+   Responsive Design - Mobile and Tablet
+   ========================================================================== */
+
+/* Mobile and tablet responsive breakpoint */
+@media (max-width: 700px) {
+    /* Adjust container margins and padding for smaller screens */
+    .editor-container {
+        margin: 16px;
+        padding: 20px 16px;
+    }
+    
+    /* Stack editor sections vertically */
+    .editor-sections {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    /* Remove width constraints for mobile */
+    .editor-section {
+        min-width: 0;
+        flex: none;
+        width: 100%;
+    }
+    
+    /* Keep item rows horizontal but adjust spacing */
+    .option-row, 
+    .combo-item-row {
+        flex-direction: row;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    /* Stack group headers vertically for better mobile UX */
+    .option-group-header, 
+    .combo-group-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    /* Increase input sizes for better touch interaction */
+    input[type="text"], 
+    input[type="number"], 
+    textarea, 
+    select {
+        font-size: 16px; /* Prevent zoom on iOS devices */
+        padding: 10px 12px;
+    }
+    
+    /* Make buttons larger and full-width for mobile */
+    .save-btn, 
+    .cancel-btn, 
+    .btn-primary, 
+    .btn-secondary, 
+    .btn-danger {
+        font-size: 16px;
+        padding: 12px 20px;
+        margin-bottom: 8px;
+    }
+    
+    /* Stack form actions vertically */
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    /* Adjust price input container for mobile */
+    .combo-item-row span[style*="display:inline-flex"] {
+        width: 100%;
+        justify-content: flex-start;
+    }
 }
