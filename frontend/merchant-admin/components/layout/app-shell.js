@@ -7,7 +7,7 @@ class AppShell extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this.menuOpen = false;
     // Track last mobile/desktop state to optimize rendering on resize
-    this._lastIsMobile = window.innerWidth <= 768;
+    this._lastIsMobile = window.innerWidth <= 900;
   }
 
   // --- Lifecycle methods ---
@@ -40,7 +40,7 @@ class AppShell extends HTMLElement {
     if (navMenu) {
       navMenu.addEventListener('click', () => {
         // On mobile, close menu after clicking any link
-        if (window.innerWidth <= 768) {
+        if (window.innerWidth <= 900) {
           this.menuOpen = false;
           this.updateMenuDisplay();
         }
@@ -54,7 +54,7 @@ class AppShell extends HTMLElement {
    * and preserve main content during re-render.
    */
   handleResize() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 900;
     if (isMobile !== this._lastIsMobile) {
       this._lastIsMobile = isMobile;
       this.bindEvents();
@@ -68,7 +68,7 @@ class AppShell extends HTMLElement {
    * Responsive: header and hamburger menu for mobile, sidebar for desktop.
    */
   render() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 900;
     this.shadowRoot.innerHTML = this.getHTML();
   }
 
@@ -77,7 +77,7 @@ class AppShell extends HTMLElement {
    * Also passes data-mobile attribute to nav-menu for mobile rendering.
    */
   updateMenuDisplay() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 900;
     const navMenu = this.shadowRoot.querySelector('nav-menu');
     const hamburgerBtn = this.shadowRoot.getElementById('hamburgerBtn');
     const header = this.shadowRoot.querySelector('header');

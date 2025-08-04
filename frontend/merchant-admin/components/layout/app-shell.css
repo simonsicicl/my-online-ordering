@@ -46,7 +46,7 @@ main {
     padding: 1em;
     overflow-y: auto;
 }
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     :host {
     flex-direction: column;
     }
@@ -75,7 +75,7 @@ main {
 }
 
 /* Desktop styles */
-@media (min-width: 769px) {
+@media (min-width: 901px) {
     header {
     display: none;
     }
