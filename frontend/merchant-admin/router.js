@@ -12,7 +12,7 @@ export const routes = {
   '/menu/edit/:id': 'menu/menu-editor',
   '/categories': 'menu/category-manager',
   '/orders': 'orders/order-list',
-  '/orders/:id': 'orders/order-detail',
+  '/order-detail/:id': 'orders/order-detail',
   '/settings': 'settings/merchant-settings',
   '/devices': 'settings/device-manager',
   '/analysis': 'analysis/analysis-view',

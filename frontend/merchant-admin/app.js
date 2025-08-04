@@ -1,7 +1,7 @@
 import { matchRoute } from './router.js';
 import './components/layout/app-shell.js';
 import './components/layout/nav-menu.js';
-import { restaurantDataExample } from './example-data.js';
+import { restaurantDataExample, orderDataExample } from './example-data.js';
 
 // Initialize global menu data (can be replaced with API data in the future)
 window._menuData = {
@@ -10,6 +10,8 @@ window._menuData = {
   tags: restaurantDataExample.tags,
   option_groups: restaurantDataExample.option_groups
 };
+// Initialize global order data (can be replaced with API data)
+window._orderData = orderDataExample;
 
 /**
  * Main application entry point for merchant admin SPA.
@@ -71,7 +73,26 @@ class MerchantApp extends HTMLElement {
       el.menu = window._menuData.menu;
     }
 
-    // Listen for the save event from menu-editor and update menu data
+    // Inject orders into order-list
+    if (componentName === 'order-list') {
+      el.orders = window._orderData;
+    }
+
+    // Inject a single order into order-detail
+    if (componentName === 'order-detail') {
+      let orderId = null;
+      if (match.params && match.params.orderId) {
+        orderId = Number(match.params.orderId);
+      } else if (el.hasAttribute('id')) {
+        orderId = Number(el.getAttribute('id'));
+      }
+      if (orderId) {
+        const order = window._orderData.find(o => o.order_id === orderId);
+        if (order) el.order = order;
+      }
+    }
+
+    // Handle menu-editor save event
     if (componentName === 'menu-editor') {
       el.addEventListener('save', (e) => {
         const updated = e.detail;
