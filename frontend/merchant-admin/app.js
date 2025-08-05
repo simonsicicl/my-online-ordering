@@ -3,15 +3,8 @@ import './components/layout/app-shell.js';
 import './components/layout/nav-menu.js';
 import { restaurantDataExample, orderDataExample } from './example-data.js';
 
-// Initialize global menu data (can be replaced with API data in the future)
-window._menuData = {
-  menu: restaurantDataExample.menu,
-  categories: restaurantDataExample.categories,
-  tags: restaurantDataExample.tags,
-  option_groups: restaurantDataExample.option_groups
-};
-// Initialize global order data (can be replaced with API data)
-window._orderData = orderDataExample;
+// Replace this with your actual API Gateway base URL
+const API_BASE = 'https://ncsmt66i1f.execute-api.ap-northeast-3.amazonaws.com/prod';
 
 /**
  * Main application entry point for merchant admin SPA.
@@ -27,12 +20,32 @@ class MerchantApp extends HTMLElement {
     window.addEventListener('hashchange', () => this.route());
   }
 
+  async fetchMenuData() {
+    const [menu, categories, tags, option_groups] = await Promise.all([
+      fetch(`${API_BASE}/menu`).then(r => r.json()),
+      fetch(`${API_BASE}/categories`).then(r => r.json()),
+      fetch(`${API_BASE}/tags`).then(r => r.json()),
+      fetch(`${API_BASE}/option-groups`).then(r => r.json())
+    ]);
+    return { menu, categories, tags, option_groups };
+  }
+
   /**
    * Called when the element is added to the DOM.
    * Triggers initial route rendering.
    */
   connectedCallback() {
     this.route();
+    console.log('MerchantApp connected');
+    // Initialize global menu data from backend API (await getting data properly)
+    this.initMenuData();
+    // Initialize global order data (can be replaced with API data)
+    window._orderData = orderDataExample;
+  }
+
+  async initMenuData() {
+    window._menuData = await this.fetchMenuData();
+    console.log('Menu data initialized:', window._menuData);
   }
 
   /**
