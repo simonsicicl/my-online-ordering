@@ -40,8 +40,8 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Serverless Framework
-        run: npm install -g serverless
+      - name: Install Serverless Framework v3
+        run: npm install -g serverless@3
 
       - name: Install Python dependencies
         run: |
