@@ -55,6 +55,11 @@
 │   │   ├── utils.py
 │   │   ├── requirements.txt
 │   │   └── serverless.yml
+│   ├── inventory-service/
+│   │   ├── handler.py
+│   │   ├── models/
+│   │   ├── utils/
+│   │   └── serverless.yml
 │   ├── shared/               # Shared modules
 │   │   ├── db.py
 │   │   ├── auth.py
@@ -84,11 +89,12 @@ merchant-admin/
     │   ├── app-shell.js            # Contains sidebar and main content area
     │   └── nav-menu.js             # Sidebar menu
     ├── dashboard/
-    │   └── merchant-dashboard.js   # Merchant dashboard
+    │   └── merchant-dashboard.js   # Merchant dashboard 
     ├── menu/
     │   ├── menu-list.js            # Product list
     │   ├── menu-editor.js          # Product editor (with options, combos)
-    │   └── category-manager.js     # Category management
+    │   ├── category-manager.js     # Category management
+    │   └── tag-manager.js          # tag management
     ├── orders/
     │   ├── order-list.js           # Order list
     │   └── order-detail.js         # Order detail
@@ -105,7 +111,12 @@ merchant-admin/
     ├── settings/
     │   ├── merchant-settings.js    # Merchant settings
     │   └── device-manager.js       # Device management
+    ├── inventory/
+    │   ├── inventory-list.js       # Inventory list and query
+    │   ├── purchase-list.js        # Purchase order list
+    │   ├── movements-list.js       # Inventory movement records
+    │   └── stock-alert.js          # Inventory alerts
     └── shared/
         ├── modal-dialog.js         # Modal dialog component
         ├── form-input.js           # Form input component
-        └── loading-spinner.js      # Loading spinner component
+        └── loading-spinner.js      # Loading spinner

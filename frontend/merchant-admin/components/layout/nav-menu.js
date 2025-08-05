@@ -37,8 +37,8 @@ class NavMenu extends HTMLElement {
       <nav>
         ${!isMobile ? `<div class="logo">Merchant Admin</div>` : ''}
         <a data-href="/" class="${this.isActive('/')}"><span class="icon">🏠</span>Dashboard</a>
-        <a data-href="/menu" class="${this.isActive('/menu')}"><span class="icon">📦</span>Product Management</a>
-        <a data-href="/categories" class="${this.isActive('/categories')}"><span class="icon">🗂️</span>Category Management</a>
+        <a data-href="/menu" class="${this.isActive('/menu')}"><span class="icon">🍽️</span>Menu Management</a>
+        <a data-href="/inventory" class="${this.isActive('/inventory')}"><span class="icon">📦</span>Inventory Management</a>
         <a data-href="/orders" class="${this.isActive('/orders')}"><span class="icon">🧾</span>Order Management</a>
         <div class="divider"></div>
         <a data-href="/analysis" class="${this.isActive('/analysis')}"><span class="icon">📊</span>Analytics</a>
