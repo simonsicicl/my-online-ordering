@@ -58,7 +58,7 @@ jobs:
 
       - name: Install Python dependencies for order-service
         run: |
-          cd ../../order-service
+          cd backend/order-service
           pip install -r requirements.txt -t .
 
       - name: Deploy order-service with Serverless
