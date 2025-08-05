@@ -12,45 +12,53 @@ functions:
       - http:
           path: /menu
           method: get
+          cors: true
   getMenuItem:
     handler: handler.get_menu_item
     events:
       - http:
           path: /menu/{item_id}
           method: get
+          cors: true
   createMenuItem:
     handler: handler.create_menu_item
     events:
       - http:
           path: /menu
           method: post
+          cors: true
   updateMenuItem:
     handler: handler.update_menu_item
     events:
       - http:
           path: /menu/{item_id}
           method: put
+          cors: true
   deleteMenuItem:
     handler: handler.delete_menu_item
     events:
       - http:
           path: /menu/{item_id}
           method: delete
+          cors: true
   getCategories:
     handler: handler.get_categories
     events:
       - http:
           path: /categories
           method: get
+          cors: true
   getTags:
     handler: handler.get_tags
     events:
       - http:
           path: /tags
           method: get
+          cors: true
   getOptionGroups:
     handler: handler.get_option_groups
     events:
       - http:
           path: /option-groups
           method: get
+          cors: true

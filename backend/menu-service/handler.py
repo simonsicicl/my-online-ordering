@@ -155,7 +155,12 @@ DATA = {
 def response(body, status=200):
     return {
         "statusCode": status,
-        "headers": {"Content-Type": "application/json"},
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",  # Allow all origins
+            "Access-Control-Allow-Headers": "*", # Allow all headers
+            "Access-Control-Allow-Methods": "*"  # Allow all methods
+        },
         "body": json.dumps(body, ensure_ascii=False)
     }
 
