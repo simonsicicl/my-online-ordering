@@ -1,0 +1,56 @@
+service: menu-service
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: ap-northeast-3
+
+functions:
+  getMenu:
+    handler: handler.get_menu
+    events:
+      - http:
+          path: /menu
+          method: get
+  getMenuItem:
+    handler: handler.get_menu_item
+    events:
+      - http:
+          path: /menu/{item_id}
+          method: get
+  createMenuItem:
+    handler: handler.create_menu_item
+    events:
+      - http:
+          path: /menu
+          method: post
+  updateMenuItem:
+    handler: handler.update_menu_item
+    events:
+      - http:
+          path: /menu/{item_id}
+          method: put
+  deleteMenuItem:
+    handler: handler.delete_menu_item
+    events:
+      - http:
+          path: /menu/{item_id}
+          method: delete
+  getCategories:
+    handler: handler.get_categories
+    events:
+      - http:
+          path: /categories
+          method: get
+  getTags:
+    handler: handler.get_tags
+    events:
+      - http:
+          path: /tags
+          method: get
+  getOptionGroups:
+    handler: handler.get_option_groups
+    events:
+      - http:
+          path: /option-groups
+          method: get

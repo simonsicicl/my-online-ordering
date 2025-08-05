@@ -1,0 +1,7 @@
+# AWS Lambda Python requirements for menu-service
+
+# No external dependencies required for basic functionality
+# If you use a database or other services, add them here
+
+# Example (uncomment if needed):
+# boto3
