@@ -1,6 +1,10 @@
 // Product editor component for merchant admin system
-// Supports universal (global) and custom (local) option groups per new data structure.
 
+import {
+  createMenuItemURL,
+  updateMenuItemURL,
+  getMenuItemURL
+} from '../../../api.js';
 import './combo-group-editor.js';
 import './option-group-editor.js';
 
@@ -17,9 +21,28 @@ class MenuEditor extends HTMLElement {
   get option_groups() { return this._option_groups || []; }
 
   // --- Lifecycle methods ---
-  connectedCallback() {
+  /**
+   * Called when the element is inserted into the DOM.
+   * Loads product data if editing, or prepares a new product template.
+   */
+  async connectedCallback() {
     this.itemId = this.getAttribute('id');
-    this.product = this.itemId === "0" ? this.getNewProductTemplate() : this.getProductCopyById(this.itemId);
+    // If editing, fetch latest product data from API
+    if (this.itemId !== "0") {
+      try {
+        const res = await fetch(getMenuItemURL(this.itemId));
+        if (res.ok) {
+          this.product = await res.json();
+        } else {
+          this.product = null;
+        }
+      } catch {
+        this.product = null;
+      }
+    } else {
+      // New product template
+      this.product = this.getNewProductTemplate();
+    }
     if (!this.product) {
       this.innerHTML = `<h2>Product Editor</h2><p>Product not found.</p>`;
       return;
@@ -28,6 +51,9 @@ class MenuEditor extends HTMLElement {
   }
 
   // --- Render methods ---
+  /**
+   * Renders the editor UI and binds form and detail section events.
+   */
   render() {
     const product = this.product;
     const itemId = this.itemId;
@@ -35,16 +61,18 @@ class MenuEditor extends HTMLElement {
     const title = itemId === "0" ? 'New Product' : `Editing: ${product.name}`;
     this.querySelector('h2').textContent = title;
 
-    // Bind form events
+    // Bind form submit event
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, product);
 
+    // Bind cancel button event
     const cancelBtn = this.querySelector('#cancelBtn');
     if (cancelBtn) cancelBtn.onclick = (e) => this.cancelEventHandler(e);
 
     // Dynamically insert option or combo editor based on product type
     const detailSection = this.querySelector('#editor-detail-section');
     if (product.is_combo) {
+      // Combo product: use combo-group-editor
       const comboEditor = document.createElement('combo-group-editor');
       comboEditor.id = 'comboEditor';
       comboEditor.value = product;
@@ -55,6 +83,7 @@ class MenuEditor extends HTMLElement {
       detailSection.innerHTML = ''; // Clear previous content
       detailSection.appendChild(comboEditor);
     } else {
+      // Single product: use option-group-editor
       const optionEditor = document.createElement('option-group-editor');
       optionEditor.id = 'optionEditor';
       optionEditor.value = product;
@@ -66,7 +95,7 @@ class MenuEditor extends HTMLElement {
       detailSection.appendChild(optionEditor);
     }
 
-    // Can switch between combo and single item only for new products
+    // Allow switching between combo and single only for new products
     const isComboCheckbox = this.querySelector('#is_combo');
     if (isComboCheckbox && product.item_id === 0) {
       isComboCheckbox.onchange = () => {
@@ -77,6 +106,11 @@ class MenuEditor extends HTMLElement {
   }
 
   // --- Utility methods ---
+  /**
+   * Formats an ISO date string for display.
+   * @param {string} dateStr
+   * @returns {string}
+   */
   formatDate(dateStr) {
     if (!dateStr) return '-';
     const d = new Date(dateStr);
@@ -84,17 +118,60 @@ class MenuEditor extends HTMLElement {
   }
 
   // --- Event handlers ---
-  saveEventHandler(e, product) {
+  /**
+   * Handles form submission, sends data to backend API, and dispatches 'save' event.
+   * @param {Event} e
+   * @param {Object} product
+   */
+  async saveEventHandler(e, product) {
     e.preventDefault();
     const formData = new FormData(e.target);
+    // Convert FormData to object and handle checkboxes
     const updatedProduct = { ...product, ...Object.fromEntries(formData) };
-    this.dispatchEvent(new CustomEvent('save', { detail: updatedProduct }));
+    updatedProduct.is_available = !!formData.get('is_available');
+    updatedProduct.is_combo = !!formData.get('is_combo');
+    // Tags: collect all checked tag values
+    updatedProduct.tags = Array.from(this.querySelectorAll('.tag-list input[type="checkbox"]:checked')).map(cb => Number(cb.value));
+
+    // Decide API endpoint and method
+    let url, method;
+    if (this.itemId === "0" || updatedProduct.item_id === 0) {
+      url = createMenuItemURL();
+      method = 'POST';
+    } else {
+      url = updateMenuItemURL(updatedProduct.item_id);
+      method = 'PUT';
+    }
+
+    // Send to backend
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedProduct)
+      });
+      if (!res.ok) throw new Error('Failed to save product');
+      const saved = await res.json();
+      // Notify parent that save is complete
+      this.dispatchEvent(new CustomEvent('save', { detail: saved }));
+    } catch (err) {
+      alert('Failed to save product!');
+    }
   }
+
+  /**
+   * Handles cancel button click, navigates back to menu list.
+   * @param {Event} e
+   */
   cancelEventHandler(e) {
     e.preventDefault();
     window.location.hash = '/menu';
   }
 
+  /**
+   * Returns a template for a new product.
+   * @returns {Object}
+   */
   getNewProductTemplate() {
     const now = new Date().toISOString();
     return {
@@ -115,6 +192,11 @@ class MenuEditor extends HTMLElement {
     };
   }
 
+  /**
+   * Returns a deep copy of a product by id, or a new template if not found.
+   * @param {number|string} id
+   * @returns {Object}
+   */
   getProductCopyById(id) {
     const original = this._menu.find(p => String(p.item_id) === String(id));
     return original ? JSON.parse(JSON.stringify(original)) : this.getNewProductTemplate();

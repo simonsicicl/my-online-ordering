@@ -1,5 +1,7 @@
 // Product list component for merchant admin system
 
+import {updateMenuItemURL } from '../../../api.js';
+
 class MenuList extends HTMLElement {
   constructor() {
     super();
@@ -114,11 +116,31 @@ class MenuList extends HTMLElement {
    * Toggles product availability.
    * @param {HTMLElement} btn
    */
-  handleToggleClick(btn) {
+  async handleToggleClick(btn) {
     const idx = btn.getAttribute('data-idx');
-    // Toggle product availability status
-    this.menu[idx].is_available = !this.menu[idx].is_available;
+    const product = this.menu[idx];
+    // Toggle availability locally
+    product.is_available = !product.is_available;
     this.renderProductTable();
+
+    // Send update to backend
+    try {
+      const res = await fetch(
+        updateMenuItemURL(product.item_id),
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_available: product.is_available })
+        }
+      );
+      if (!res.ok)
+        throw new Error('Failed to update availability');
+    } catch (err) {
+      alert('Failed to update product availability!');
+      // Revert UI if backend update fails
+      product.is_available = !product.is_available;
+      this.renderProductTable();
+    }
   }
 
   // --- Utility methods ---

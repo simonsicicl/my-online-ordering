@@ -15,13 +15,13 @@
 │   │   ├── app.js
 │   │   ├── components/
 │   │   └── styles/
-│   └── merchant-admin/       # Merchant admin system (Web Components SPA)
-│       ├── index.html
-│       ├── app.js
-│       ├── router.js
-│       ├── components/
-│       └── styles/
-│
+│   ├── merchant-admin/       # Merchant admin system (Web Components SPA)
+│   │   ├── index.html
+│   │   ├── app.js
+│   │   ├── router.js
+│   │   ├── components/
+│   │   └── styles/
+│   └── api.js                # API file for API and URL storage
 ├── backend/
 │   ├── auth-service/         # User and permission service
 │   │   ├── handler.py

@@ -69,15 +69,15 @@ class OrderList extends HTMLElement {
       );
     });
 
-    // Show empty message if no orders
-    if (!filteredOrders.length) {
-      tableContainer.innerHTML = this.getEmptyHTML();
-      return;
-    }
-
     const listContainer = this.querySelector('.order-table');
     if (!listContainer) 
       return;
+
+    // Show empty message if no orders
+    if (!filteredOrders.length) {
+      listContainer.innerHTML = this.getEmptyHTML();
+      return;
+    }
 
     // Render as cards on mobile, table on desktop
     if (window.innerWidth <= 700) {

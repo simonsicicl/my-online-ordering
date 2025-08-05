@@ -1,10 +1,13 @@
 import { matchRoute } from './router.js';
 import './components/layout/app-shell.js';
 import './components/layout/nav-menu.js';
-import { restaurantDataExample, orderDataExample } from './example-data.js';
-
-// Replace this with your actual API Gateway base URL
-const API_BASE = 'https://ncsmt66i1f.execute-api.ap-northeast-3.amazonaws.com/prod';
+import {
+  getMenuURL,
+  getCategoriesURL,
+  getTagsURL,
+  getOptionGroupsURL,
+  getOrdersURL
+} from '../api.js'; // Centralized API helpers
 
 /**
  * Main application entry point for merchant admin SPA.
@@ -21,13 +24,20 @@ class MerchantApp extends HTMLElement {
   }
 
   async fetchMenuData() {
+    // Fetch menu-related data from menu-service using centralized API helpers
     const [menu, categories, tags, option_groups] = await Promise.all([
-      fetch(`${API_BASE}/menu`).then(r => r.json()),
-      fetch(`${API_BASE}/categories`).then(r => r.json()),
-      fetch(`${API_BASE}/tags`).then(r => r.json()),
-      fetch(`${API_BASE}/option-groups`).then(r => r.json())
+      fetch(getMenuURL()).then(r => r.json()),
+      fetch(getCategoriesURL()).then(r => r.json()),
+      fetch(getTagsURL()).then(r => r.json()),
+      fetch(getOptionGroupsURL()).then(r => r.json())
     ]);
     return { menu, categories, tags, option_groups };
+  }
+
+  async fetchOrderData() {
+    // Fetch order list from order-service using centralized API helper
+    const orders = await fetch(getOrdersURL()).then(r => r.json());
+    return orders;
   }
 
   /**
@@ -36,21 +46,11 @@ class MerchantApp extends HTMLElement {
    */
   connectedCallback() {
     this.route();
-    console.log('MerchantApp connected');
-    // Initialize global menu data from backend API (await getting data properly)
-    this.initMenuData();
-    // Initialize global order data (can be replaced with API data)
-    window._orderData = orderDataExample;
-  }
-
-  async initMenuData() {
-    window._menuData = await this.fetchMenuData();
-    console.log('Menu data initialized:', window._menuData);
   }
 
   /**
    * Matches the current hash to a route, loads the corresponding component,
-   * passes route params and menu data, and renders the component.
+   * passes route params and menu/order data, and renders the component.
    * @return {Promise<void>}
    */
   async route() {
@@ -80,33 +80,16 @@ class MerchantApp extends HTMLElement {
 
     // Pass menu data to menu-list and menu-editor components
     if (componentName === 'menu-list' || componentName === 'menu-editor') {
-      el.categories = window._menuData.categories;
-      el.tags = window._menuData.tags;
-      el.option_groups = window._menuData.option_groups;
-      el.menu = window._menuData.menu;
-    }
-
-    // Inject orders into order-list
-    if (componentName === 'order-list') {
-      el.orders = window._orderData;
-    }
-
-    // Inject a single order into order-detail
-    if (componentName === 'order-detail') {
-      let orderId = null;
-      if (match.params && match.params.orderId) {
-        orderId = Number(match.params.orderId);
-      } else if (el.hasAttribute('id')) {
-        orderId = Number(el.getAttribute('id'));
-      }
-      if (orderId) {
-        const order = window._orderData.find(o => o.order_id === orderId);
-        if (order) el.order = order;
-      }
+      window._menuData = await this.fetchMenuData();
+      el.categories = window._menuData?.categories || [];
+      el.tags = window._menuData?.tags || [];
+      el.option_groups = window._menuData?.option_groups || [];
+      el.menu = window._menuData?.menu || [];
     }
 
     // Handle menu-editor save event
     if (componentName === 'menu-editor') {
+      window._menuData = await this.fetchMenuData();
       el.addEventListener('save', (e) => {
         const updated = e.detail;
         // Find index of existing product by item_id
@@ -121,6 +104,27 @@ class MerchantApp extends HTMLElement {
         // Switch back to the product list page
         window.location.hash = '/menu/list';
       });
+    }
+    
+    // Inject orders into order-list
+    if (componentName === 'order-list') {
+      window._orderData = await this.fetchOrderData();
+      el.orders = window._orderData || [];
+    }
+
+    // Inject a single order into order-detail
+    if (componentName === 'order-detail') {
+      window._orderData = await this.fetchOrderData();
+      let orderId = null;
+      if (match.params && match.params.orderId) {
+        orderId = Number(match.params.orderId);
+      } else if (el.hasAttribute('id')) {
+        orderId = Number(el.getAttribute('id'));
+      }
+      if (orderId && window._orderData) {
+        const order = window._orderData.find(o => o.order_id === orderId);
+        if (order) el.order = order;
+      }
     }
 
     // Render the component inside the shell layout
