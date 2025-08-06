@@ -62,3 +62,10 @@ functions:
           path: /option-groups
           method: get
           cors: true
+  getOptionList:
+    handler: handler.get_option_list
+    events:
+      - http:
+          path: /option-list
+          method: get
+          cors: true

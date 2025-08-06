@@ -18,11 +18,7 @@ MENU = {
             "universal_name": "通用甜度群組",
             "default_option_id": 301,
             "is_visible_on_order": True,
-            "options": [
-                {"option_id": 301, "option_name": "正常糖", "price_delta": 0, "is_active": True},
-                {"option_id": 302, "option_name": "半糖", "price_delta": 0, "is_active": True},
-                {"option_id": 303, "option_name": "無糖", "price_delta": 0, "is_active": True}
-            ]
+            "option_ids": [301, 302, 303]
         },
         {
             "option_group_id": 202,
@@ -32,22 +28,38 @@ MENU = {
             "universal_name": "通用加料群組",
             "default_option_id": None,
             "is_visible_on_order": True,
-            "options": [
-                {"option_id": 304, "option_name": "加珍珠", "price_delta": 10, "is_active": True},
-                {"option_id": 305, "option_name": "加椰果", "price_delta": 10, "is_active": True}
-            ]
+            "option_ids": [304, 305]
         },
         {
             "option_group_id": 203,
             "is_universal": False,
             "group_name": "甜度",
             "is_multiple": False,
-            "default_option_id": 306,
+            "default_option_id": 301,
             "is_visible_on_order": True,
-            "options": [
-                {"option_id": 306, "option_name": "正常糖", "price_delta": 0, "is_active": True},
-                {"option_id": 307, "option_name": "半糖", "price_delta": 0, "is_active": True},
-                {"option_id": 308, "option_name": "無糖", "price_delta": 0, "is_active": True}
+            "option_ids": [301, 302, 303]
+        }
+    ],
+    "optionList": [
+        {"option_id": 301, "option_name": "正常糖", "price_delta": 0, "is_active": True},
+        {"option_id": 302, "option_name": "半糖", "price_delta": 0, "is_active": True},
+        {"option_id": 303, "option_name": "無糖", "price_delta": 0, "is_active": True},
+        {
+            "option_id": 304,
+            "option_name": "加珍珠",
+            "price_delta": 10,
+            "is_active": True,
+            "material_list": [
+                {"material_id": 103, "quantity_needed": 20.00}
+            ]
+        },
+        {
+            "option_id": 305,
+            "option_name": "加椰果",
+            "price_delta": 10,
+            "is_active": True,
+            "material_list": [
+                {"material_id": 104, "quantity_needed": 20.00}
             ]
         }
     ],
@@ -65,7 +77,12 @@ MENU = {
             "created_at": "2025-07-01T00:00:00Z",
             "updated_at": "2025-07-15T00:00:00Z",
             "tags": [1, 2],
-            "option_groups": [201, 202]
+            "option_groups": [201, 202],
+            "material_list": [
+                {"material_id": 101, "quantity_needed": 10.00},
+                {"material_id": 102, "quantity_needed": 200.00},
+                {"material_id": 103, "quantity_needed": 30.00}
+            ]
         },
         {
             "item_id": 1002,
@@ -99,7 +116,8 @@ MENU = {
                         {"item_id": 1005, "price_delta": 5}
                     ]
                 }
-            ]
+            ],
+            "material_list": []
         },
         {
             "item_id": 1003,
@@ -114,7 +132,10 @@ MENU = {
             "created_at": "2025-07-05T00:00:00Z",
             "updated_at": "2025-07-20T00:00:00Z",
             "tags": [3],
-            "option_groups": []
+            "option_groups": [],
+            "material_list": [
+                {"material_id": 102, "quantity_needed": 50.00}
+            ]
         },
         {
             "item_id": 1004,
@@ -129,7 +150,10 @@ MENU = {
             "created_at": "2025-07-08T00:00:00Z",
             "updated_at": "2025-07-20T00:00:00Z",
             "tags": [],
-            "option_groups": [203]
+            "option_groups": [203],
+            "material_list": [
+                {"material_id": 101, "quantity_needed": 10.00}
+            ]
         },
         {
             "item_id": 1005,
@@ -144,7 +168,12 @@ MENU = {
             "created_at": "2025-07-09T00:00:00Z",
             "updated_at": "2025-07-20T00:00:00Z",
             "tags": [1],
-            "option_groups": []
+            "option_groups": [],
+            "material_list": [
+                {"material_id": 105, "quantity_needed": 80.00},
+                {"material_id": 106, "quantity_needed": 5.00},
+                {"material_id": 107, "quantity_needed": 100.00}
+            ]
         }
     ]
 }

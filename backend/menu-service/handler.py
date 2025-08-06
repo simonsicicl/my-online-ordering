@@ -46,6 +46,13 @@ def get_option_groups(event, context):
     """
     return response(MENU["option_groups"])
 
+def get_option_list(event, context):
+    """
+    GET /option-list
+    Returns the list of all options.
+    """
+    return response(MENU["optionList"])
+
 def get_menu_item(event, context):
     """
     GET /menu/{item_id}
