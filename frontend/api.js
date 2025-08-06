@@ -11,6 +11,7 @@ export const deleteMenuItemURL = (itemId) => `${MENU_SERVICE_API_BASE}/menu/${it
 export const getCategoriesURL = () => `${MENU_SERVICE_API_BASE}/categories`;
 export const getTagsURL = () => `${MENU_SERVICE_API_BASE}/tags`;
 export const getOptionGroupsURL = () => `${MENU_SERVICE_API_BASE}/option-groups`;
+export const getOptionListURL = () => `${MENU_SERVICE_API_BASE}/option-list`; // 新增 option-list API
 
 // Order API helpers
 export const getOrdersURL = () => `${ORDER_SERVICE_API_BASE}/orders`;

@@ -14,11 +14,15 @@ class MenuEditor extends HTMLElement {
   set categories(data) { this._categories = data || []; }
   set tags(data) { this._tags = data || []; }
   set option_groups(data) { this._option_groups = data || []; }
+  set option_list(data) { this._option_list = data || []; }
+  set product(data) { this._product = data || this.getNewProductTemplate(); }
 
   get menu() { return this._menu || []; }
   get categories() { return this._categories || []; }
   get tags() { return this._tags || []; }
   get option_groups() { return this._option_groups || []; }
+  get option_list() { return this._option_list || []; }
+  get product() { return this._product || this.getNewProductTemplate(); }
 
   // --- Lifecycle methods ---
   /**

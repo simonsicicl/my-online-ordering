@@ -78,13 +78,22 @@ class MerchantApp extends HTMLElement {
       });
     }
 
-    // Pass menu data to menu-list and menu-editor components
-    if (componentName === 'menu-list' || componentName === 'menu-editor') {
+    // Pass menu data to menu-list components
+    if (componentName === 'menu-list') {
+      window._menuData = await this.fetchMenuData();
+      el.categories = window._menuData?.categories || [];
+      el.tags = window._menuData?.tags || [];
+      el.menu = window._menuData?.menu || [];
+    }
+
+    // Pass menu data to menu-editor components
+    if (componentName === 'menu-editor') {
       window._menuData = await this.fetchMenuData();
       el.categories = window._menuData?.categories || [];
       el.tags = window._menuData?.tags || [];
       el.option_groups = window._menuData?.option_groups || [];
       el.menu = window._menuData?.menu || [];
+      
     }
 
     // Handle menu-editor save event
@@ -105,7 +114,7 @@ class MerchantApp extends HTMLElement {
         window.location.hash = '/menu/list';
       });
     }
-    
+
     // Inject orders into order-list
     if (componentName === 'order-list') {
       window._orderData = await this.fetchOrderData();
