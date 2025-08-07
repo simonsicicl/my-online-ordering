@@ -1,370 +1,155 @@
-/**
- * OptionGroupEditor - A custom HTML element for managing product option groups
- * Supports both universal (predefined) and custom option groups
- */
+// Modal-style Option Group Editor for merchant admin system
+
 class OptionGroupEditor extends HTMLElement {
-  // Setter for product data - triggers re-render when data changes
-  set value(data) { this._data = data; this.render(); }
-  
-  // Setter for available option groups from the database
-  set optionGroups(data) { this._optionGroups = data; }
-  
-  // Getter for current product data
-  get value() { return this._data; }
+  // --- Data setters/getters ---
+  set group(data) { this._group = data || this.getNewGroupTemplate(); }
+  get group() { return this._group || this.getNewGroupTemplate(); }
 
-  // Legacy setter for product data (for backward compatibility)
-  set product(data) { this._product = data; this.render(); }
+  set option_list(data) { this._option_list = data || []; }
+  get option_list() { return this._option_list || []; }
 
-  // Called when element is added to the DOM
-  connectedCallback() { 
-    this.render(); 
+  // --- Lifecycle methods ---
+  /**
+   * Called when the element is added to the DOM.
+   * Renders modal and editor UI.
+   */
+  connectedCallback() {
+    this.renderModal();
+    this.renderEditor();
+  }
+
+  // --- Modal rendering ---
+  /**
+   * Renders the modal backdrop and content container.
+   */
+  renderModal() {
+    this.innerHTML = `
+      <div class="modal-backdrop"></div>
+      <div class="modal-content"></div>
+    `;
+    this.querySelector('.modal-backdrop').onclick = () => this.close();
   }
 
   /**
-   * Main render method - builds the UI for option group management
+   * Renders the option group editor form inside the modal.
+   * Binds close, cancel, and form submit events.
    */
-  render() {
-    // Don't render if required data is not available
-    if (!this._data ||  !this._optionGroups) {
-      this.innerHTML = `<div>Loading...</div>`;
-      return;
-    }
-    const product = this._data;
-    const optionGroups = this._optionGroups || [];
-    if (!product) {
-      this.innerHTML = `<div>No product data</div>`;
-      return;
-    }
-    
-    // Safety check: ensure option_groups is an array
-    if (!Array.isArray(product.option_groups)) {
-      product.option_groups = [];
-    }
-    
-    // Build the HTML structure
-    this.innerHTML = this.getHTML();
+  renderEditor() {
+    const group = this.group;
+    const isNew = !group.option_group_id;
+    this.querySelector('.modal-content').innerHTML = this.getEditorHTML(isNew, group);
 
-    // Bind event handlers for all interactive elements
-    this.bindEventHandlers();
+    // Bind close button
+    this.querySelector('#closeBtn').onclick = () => this.close();
+
+    // Bind cancel button
+    const cancelBtn = this.querySelector('#cancelBtn');
+    if (cancelBtn) cancelBtn.onclick = (e) => {
+      e.preventDefault();
+      this.close();
+    };
+
+    // Bind form submit event
+    const form = this.querySelector('#editorForm');
+    if (form) form.onsubmit = (e) => this.saveEventHandler(e, group);
   }
 
+  // --- Event handlers ---
   /**
-   * Binds all event handlers to interactive elements in the component
+   * Handles form submission for saving option group data.
+   * Dispatches 'save' event with updated group object.
+   * @param {Event} e
+   * @param {Object} group
    */
-  bindEventHandlers() {
-    // Universal option group dropdown changes
-    this.querySelectorAll('.option-group-select').forEach(sel => {
-      sel.onchange = this.handleOptionGroupSelectChange.bind(this);
-    });
-    
-    // Remove group buttons
-    this.querySelectorAll('.remove-group-btn').forEach(btn => {
-      btn.onclick = this.handleRemoveGroup.bind(this);
-    });
-    
-    // Add universal/custom group buttons
-    const addUniversalBtn = this.querySelector('#addUniversalOptionGroupBtn');
-    if (addUniversalBtn) addUniversalBtn.onclick = this.handleAddUniversalGroup.bind(this);
-    const addCustomBtn = this.querySelector('#addCustomOptionGroupBtn');
-    if (addCustomBtn) addCustomBtn.onclick = this.handleAddCustomGroup.bind(this);
-    
-    // Custom group name inputs
-    this.querySelectorAll('.custom-group-name').forEach(input => {
-      input.oninput = this.handleCustomGroupNameChange.bind(this);
-    });
-    
-    // Custom group selection type dropdowns
-    this.querySelectorAll('.custom-selection-type').forEach(sel => {
-      sel.onchange = this.handleCustomSelectionTypeChange.bind(this);
-    });
-    
-    // Custom option name and price inputs
-    this.querySelectorAll('.custom-option-name').forEach(input => {
-      input.oninput = this.handleCustomOptionNameChange.bind(this);
-    });
-    this.querySelectorAll('.custom-option-price').forEach(input => {
-      input.oninput = this.handleCustomOptionPriceChange.bind(this);
-    });
-    
-    // Custom option management buttons
-    this.querySelectorAll('.remove-custom-option-btn').forEach(btn => {
-      btn.onclick = this.handleRemoveCustomOption.bind(this);
-    });
-    this.querySelectorAll('.add-custom-option-btn').forEach(btn => {
-      btn.onclick = this.handleAddCustomOption.bind(this);
-    });
-    
-    // Default option selection for single-choice custom groups
-    this.querySelectorAll('.custom-default-option-select').forEach(sel => {
-      sel.onchange = this.handleCustomDefaultOptionChange.bind(this);
-    });
+  async saveEventHandler(e, group) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const selectedOptions = Array.from(this.querySelectorAll('input[name="option_ids"]:checked')).map(cb => Number(cb.value));
+    const updatedGroup = {
+      ...group,
+      group_name: formData.get('group_name') || '',
+      universal_name: formData.get('universal_name') || '',
+      is_multiple: !!formData.get('is_multiple'),
+      option_ids: selectedOptions
+    };
+    this.dispatchEvent(new CustomEvent('save', { detail: updatedGroup }));
+    this.close();
   }
 
+  // --- Utility methods ---
   /**
-   * Handles changes to universal option group selection
+   * Returns a template for a new option group object.
+   * @return {Object}
    */
-
-  /**
-   * Handles changes to universal option group selection
-   * Updates the product data and triggers a re-render
-   */
-  handleOptionGroupSelectChange(e) {
-    const idx = Number(e.target.dataset.idx);
-    const val = e.target.value;
-    this._data.option_groups[idx] = Number(val);
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-    this.render();
-  }
-
-  /**
-   * Handles removal of an option group from the product
-   */
-  handleRemoveGroup(e) {
-    const idx = Number(e.target.dataset.idx);
-    this._data.option_groups.splice(idx, 1);
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-    this.render();
-  }
-
-  /**
-   * Adds a new universal option group to the product
-   * Only adds if there are available universal groups not already in use
-   */
-  handleAddUniversalGroup() {
-    const usedIds = this._data.option_groups.filter(g => typeof g === 'number');
-    const available = (this._optionGroups || []).filter(
-      og => og.is_universal && !usedIds.includes(og.option_group_id)
-    );
-    if (available.length > 0) {
-      this._data.option_groups.push(available[0].option_group_id);
-      this.render();
-      this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-    }
-  }
-
-  /**
-   * Adds a new custom option group to the product
-   * Creates a new group with default values
-   */
-  handleAddCustomGroup() {
-    this._data.option_groups.push({
+  getNewGroupTemplate() {
+    return {
+      option_group_id: null,
       group_name: '',
-      is_required: true,
+      universal_name: '',
       is_multiple: false,
-      options: [{ option_name: '', price_delta: 0 }],
-      default_option_id: 0
-    });
-    this.render();
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
+      option_ids: []
+    };
   }
 
   /**
-   * Handles changes to custom group name
+   * Closes the modal and dispatches a 'close' event.
    */
-  handleCustomGroupNameChange(e) {
-    const idx = Number(e.target.dataset.groupIdx);
-    this._data.option_groups[idx].group_name = e.target.value;
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
+  close() {
+    this.remove();
+    this.dispatchEvent(new CustomEvent('close'));
   }
 
+  // --- HTML generators ---
   /**
-   * Handles changes to custom group selection type (single/multiple)
+   * Returns the HTML for the option group editor modal.
+   * @param {boolean} isNew
+   * @param {Object} group
+   * @return {string}
    */
-  handleCustomSelectionTypeChange(e) {
-    const idx = Number(e.target.dataset.groupIdx);
-    const val = e.target.value;
-    if (val === 'single') {
-      this._data.option_groups[idx].is_multiple = false;
-      this._data.option_groups[idx].is_required = true;
-    } else {
-      this._data.option_groups[idx].is_multiple = true;
-      this._data.option_groups[idx].is_required = false;
-    }
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-    this.render();
-  }
-
-  /**
-   * Handles changes to custom option names
-   */
-  handleCustomOptionNameChange(e) {
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    const optIdx = Number(e.target.dataset.optIdx);
-    this._data.option_groups[groupIdx].options[optIdx].option_name = e.target.value;
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-  }
-
-  /**
-   * Handles changes to custom option price deltas
-   */
-  handleCustomOptionPriceChange(e) {
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    const optIdx = Number(e.target.dataset.optIdx);
-    this._data.option_groups[groupIdx].options[optIdx].price_delta = Number(e.target.value);
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-  }
-
-  /**
-   * Handles removal of custom options from a group
-   * Prevents removal if it would leave the group with no options
-   */
-  handleRemoveCustomOption(e) {
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    const optIdx = Number(e.target.dataset.optIdx);
-    if (this._data.option_groups[groupIdx].options.length <= 1) {
-      alert('At least one option must remain in the group.');
-      return;
-    }
-    this._data.option_groups[groupIdx].options.splice(optIdx, 1);
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-    this.render();
-  }
-
-  /**
-   * Adds a new custom option to a group
-   */
-  handleAddCustomOption(e) {
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    this._data.option_groups[groupIdx].options.push({ option_name: '', price_delta: 0 });
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-    this.render();
-  }
-
-  /**
-   * Handles changes to the default option for single-choice custom groups
-   */
-  handleCustomDefaultOptionChange(e) {
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    this._data.option_groups[groupIdx].default_option_id = Number(e.target.value);
-    this.dispatchEvent(new CustomEvent('change', { detail: { option_groups: this._data.option_groups } }));
-  }
-
-  /**
-   * Generates the main HTML structure for the component
-   * @returns {string} The HTML string for the option group editor
-   */
-  getHTML() {
-    const product = this._data;
-    const optionGroups = this._optionGroups || [];
+  getEditorHTML(isNew, group) {
     return `
-      <div class="option-section editor-block">
-        <h3>Product Option Groups</h3>
-        ${product.option_groups?.map((groupRef, idx) => {
-          const group = optionGroups.find(g => g.option_group_id === groupRef);
-          // Check if this is a universal (predefined) option group
-          if (group && group.is_universal) {
-            return this.getUniversalOptionGroupCardHTML(group, optionGroups, idx, groupRef);
-          } else {
-            // This is a custom option group
-            const group = groupRef;
-            const showDefault = !group.is_multiple;
-            return this.getCustomOptionGroupCardHTML(group, idx, showDefault);
-          }
-        }).join('')}
-        <div style="display:flex; gap:12px; margin-top:12px;">
-          <button type="button" id="addUniversalOptionGroupBtn" class="btn-primary">Add Universal Group</button>
-          <button type="button" id="addCustomOptionGroupBtn" class="btn-secondary">Add Custom Group</button>
+      <div class="editor-container">
+        <div class="editor-header">
+          <h2>${isNew ? 'New Option Group' : `Editing: ${group.group_name || group.universal_name}`}</h2>
+          <button class="modal-close-btn" id="closeBtn" title="Close">&times;</button>
         </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Generates HTML for universal (predefined) option group cards
-   * @param {Object} group - The universal option group data
-   * @param {Array} optionGroups - All available option groups
-   * @param {number} idx - Index of the current group
-   * @param {number} groupRef - Reference ID of the group
-   * @returns {string} HTML string for the universal option group card
-   */
-  getUniversalOptionGroupCardHTML(group, optionGroups, idx, groupRef) {
-    return `
-      <div class="option-group editor-subblock">
-        <div class="option-group-header">
-          <label>
-            Option Group:
-            <select class="option-group-select" data-idx="${idx}">
-              ${optionGroups
-                .filter(og => og.is_universal)
-                .map(og =>
-                  `<option value="${og.option_group_id}" ${og.option_group_id === groupRef ? 'selected' : ''}>${og.universal_name}</option>`
-                ).join('')}
-            </select>
-          </label>
-          <button type="button" class="remove-group-btn btn-danger" data-idx="${idx}">Remove Group</button>
-        </div>
-        <div>
-          <strong>Selection Type:</strong> ${group && group.is_multiple ? 'Multiple (Optional)' : 'Single (Required)'}
-        </div>
-        <div>
-          <strong>Options:</strong>
-          <ul>
-            ${group && group.options ? group.options.map(opt => `<li>${opt.option_name} (${opt.price_delta > 0 ? '+' + opt.price_delta : '0'})</li>`).join('') : ''}
-          </ul>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Generates HTML for custom option group cards
-   * @param {Object} group - The custom option group data
-   * @param {number} idx - Index of the current group
-   * @param {boolean} showDefault - Whether to show default option selector (for single-choice groups)
-   * @returns {string} HTML string for the custom option group card
-   */
-  getCustomOptionGroupCardHTML(group, idx, showDefault) {
-    return `
-      <div class="option-group editor-subblock">
-        <div class="option-group-header">
-          <label>
-            Option Group:
-            <span class="custom-group-label">Custom Group</span>
-          </label>
-          <button type="button" class="remove-group-btn btn-danger" data-idx="${idx}">Remove Group</button>
-        </div>
-        <div class="custom-option-group-editor" style="margin-top:12px;">
-          <label>
-            Group Name:
-            <input type="text" class="custom-group-name" data-group-idx="${idx}" value="${group.group_name || ''}">
-          </label>
-          <label>
-            Selection Type:
-            <select class="custom-selection-type" data-group-idx="${idx}">
-              <option value="single" ${(group.is_required !== false && !group.is_multiple) ? 'selected' : ''}>Single (Required)</option>
-              <option value="multiple" ${(!group.is_required && group.is_multiple) ? 'selected' : ''}>Multiple (Optional)</option>
-            </select>
-          </label>
-          <div>
-            <strong>Options:</strong>
-            <ul>
-              ${(group.options || []).map((opt, optIdx) => `
-                <li>
-                  <input type="text" class="custom-option-name" data-group-idx="${idx}" data-opt-idx="${optIdx}" value="${opt.option_name || ''}" placeholder="Option Name">
-                  <input type="number" class="custom-option-price" data-group-idx="${idx}" data-opt-idx="${optIdx}" value="${opt.price_delta || 0}" style="width:50px;" placeholder="Price Delta">
-                  <button type="button" class="remove-custom-option-btn btn-danger" data-group-idx="${idx}" data-opt-idx="${optIdx}" ${group.options.length === 1 ? 'disabled' : ''}>🗑️</button>
-                </li>
-              `).join('')}
-            </ul>
-            <button type="button" class="add-custom-option-btn btn-secondary" data-group-idx="${idx}">Add Option</button>
+        <form id="editorForm">
+          <div class="editor-sections">
+            <label>
+              Universal Name:
+              <input type="text" id="universal_name" name="universal_name" value="${group.universal_name || ''}">
+            </label>
+            <label>
+              Group Name:
+              <input type="text" id="group_name" name="group_name" value="${group.group_name || ''}" required>
+            </label>
+            <label>
+              Multiple Selection:
+              <input type="checkbox" id="is_multiple" name="is_multiple" ${group.is_multiple ? 'checked' : ''}>
+            </label>
+            <label>
+              Options:
+              <div style="max-height:160px;overflow-y:auto;border:1px solid #e5e7eb;border-radius:6px;padding:10px 8px;background:#f9fafb;">
+                ${this.option_list && this.option_list.length > 0
+                  ? this.option_list.map(opt => `
+                    <label style="display:inline-block;margin:0 12px 8px 0;">
+                      <input type="checkbox" name="option_ids" value="${opt.option_id}" ${group.option_ids && group.option_ids.includes(opt.option_id) ? 'checked' : ''}>
+                      ${opt.option_name}
+                    </label>
+                  `).join('')
+                  : '<span style="color:#888;">No options available</span>'
+                }
+              </div>
+            </label>
           </div>
-          ${
-            showDefault
-              ? `<div style="margin-top:10px;">
-                  <label>
-                    Default Option:
-                    <select class="custom-default-option-select" data-group-idx="${idx}">
-                      ${group.options.map((opt, optIdx) =>
-                        `<option value="${optIdx}" ${group.default_option_id === optIdx ? 'selected' : ''}>${opt.option_name || '(Unnamed)'}</option>`
-                      ).join('')}
-                    </select>
-                  </label>
-                </div>`
-              : ''
-          }
-        </div>
+          <div class="form-actions">
+            <button type="button" id="cancelBtn" class="cancel-btn">Cancel</button>
+            <button type="submit" class="save-btn">Save</button>
+          </div>
+        </form>
       </div>
     `;
   }
 }
+
 customElements.define('option-group-editor', OptionGroupEditor);

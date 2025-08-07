@@ -1,9 +1,12 @@
-// Modal-style Product Editor for merchant admin system
+// Product editor component for merchant admin system
 
 import {
   createMenuItemURL,
-  updateMenuItemURL
+  updateMenuItemURL,
+  getMenuItemURL
 } from '../../../api.js';
+import './combo-group-editor.js';
+import './option-group-editor.js';
 
 class MenuEditor extends HTMLElement {
   // --- Data setters/getters ---
@@ -13,7 +16,6 @@ class MenuEditor extends HTMLElement {
   set option_groups(data) { this._option_groups = data || []; }
   set option_list(data) { this._option_list = data || []; }
   set product(data) { this._product = data || this.getNewProductTemplate(); }
-  set itemId(id) { this._itemId = id || "0"; }
 
   get menu() { return this._menu || []; }
   get categories() { return this._categories || []; }
@@ -21,90 +23,121 @@ class MenuEditor extends HTMLElement {
   get option_groups() { return this._option_groups || []; }
   get option_list() { return this._option_list || []; }
   get product() { return this._product || this.getNewProductTemplate(); }
-  get itemId() { return this._itemId || "0"; }
 
   // --- Lifecycle methods ---
   /**
-   * Called when the element is added to the DOM.
-   * Renders modal and loads product data for editing or new product.
+   * Called when the element is inserted into the DOM.
+   * Loads product data if editing, or prepares a new product template.
    */
   async connectedCallback() {
-    this.renderModal();
-    // Load product data for editing, or use template for new product
-    this._itemId = this.getAttribute('id') || this._itemId || "0";
-    if (this._itemId !== "0") {
-      // Deep clone to avoid mutating original menu data
-      this.product = JSON.parse(JSON.stringify(this.menu.find(item => item.item_id === Number(this._itemId))));
+    this.itemId = this.getAttribute('id');
+    // If editing, fetch latest product data from API
+    if (this.itemId !== "0") {
+      try {
+        const res = await fetch(getMenuItemURL(this.itemId));
+        if (res.ok) {
+          this.product = await res.json();
+        } else {
+          this.product = null;
+        }
+      } catch {
+        this.product = null;
+      }
     } else {
+      // New product template
       this.product = this.getNewProductTemplate();
     }
-    // If product not found, show error
     if (!this.product) {
-      this.querySelector('.modal-content').innerHTML = `<h2>Product Editor</h2><p>Product not found.</p>`;
+      this.innerHTML = `<h2>Product Editor</h2><p>Product not found.</p>`;
       return;
     }
-    this.renderEditor();
+    this.render();
   }
 
+  // --- Render methods ---
   /**
-   * Renders modal backdrop and content container.
-   * Binds backdrop click to close modal.
+   * Renders the editor UI and binds form and detail section events.
    */
-  renderModal() {
-    this.innerHTML = this.getHTML();
-    this.querySelector('.modal-backdrop').onclick = () => this.close();
-  }
-
-  /**
-   * Renders the product editor form and binds all UI events.
-   */
-  renderEditor() {
+  render() {
     const product = this.product;
-    const isNew = product.item_id === 0;
-    this.querySelector('.modal-content').innerHTML = this.getEditorHTML(isNew, product);
-
-    // Bind close button event
-    this.querySelector('#closeBtn').onclick = () => this.close();
-
-    // Bind cancel button event
-    const cancelBtn = this.querySelector('#cancelBtn');
-    if (cancelBtn) cancelBtn.onclick = (e) => {
-      e.preventDefault();
-      this.close();
-    };
-
-    // Bind image preview update on input
-    const imgInput = this.querySelector('#image_url');
-    if (imgInput) {
-      imgInput.oninput = () => {
-        this.querySelector('#imgPreview').src = imgInput.value;
-      };
-    }
+    const itemId = this.itemId;
+    this.innerHTML = this.getHTML(product);
+    const title = itemId === "0" ? 'New Product' : `Editing: ${product.name}`;
+    this.querySelector('h2').textContent = title;
 
     // Bind form submit event
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, product);
+
+    // Bind cancel button event
+    const cancelBtn = this.querySelector('#cancelBtn');
+    if (cancelBtn) cancelBtn.onclick = (e) => this.cancelEventHandler(e);
+
+    // Dynamically insert option or combo editor based on product type
+    const detailSection = this.querySelector('#editor-detail-section');
+    if (product.is_combo) {
+      // Combo product: use combo-group-editor
+      const comboEditor = document.createElement('combo-group-editor');
+      comboEditor.id = 'comboEditor';
+      comboEditor.value = product;
+      comboEditor.menu = this.menu;
+      comboEditor.addEventListener('change', e => {
+        product.combo_item_groups = e.combo_item_groups || product.combo_item_groups;
+      });
+      detailSection.innerHTML = ''; // Clear previous content
+      detailSection.appendChild(comboEditor);
+    } else {
+      // Single product: use option-group-editor
+      const optionEditor = document.createElement('option-group-editor');
+      optionEditor.id = 'optionEditor';
+      optionEditor.value = product;
+      optionEditor.optionGroups = this.option_groups;
+      optionEditor.addEventListener('change', e => {
+        product.option_groups = e.option_groups || product.option_groups;
+      });
+      detailSection.innerHTML = ''; // Clear previous content
+      detailSection.appendChild(optionEditor);
+    }
+
+    // Allow switching between combo and single only for new products
+    const isComboCheckbox = this.querySelector('#is_combo');
+    if (isComboCheckbox && product.item_id === 0) {
+      isComboCheckbox.onchange = () => {
+        product.is_combo = isComboCheckbox.checked;
+        this.render();
+      };
+    }
+  }
+
+  // --- Utility methods ---
+  /**
+   * Formats an ISO date string for display.
+   * @param {string} dateStr
+   * @returns {string}
+   */
+  formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return isNaN(d) ? '-' : d.toLocaleString();
   }
 
   // --- Event handlers ---
   /**
-   * Handles form submission, prepares data, and sends to server.
-   * Dispatches 'save' event on success.
+   * Handles form submission, sends data to backend API, and dispatches 'save' event.
    * @param {Event} e
    * @param {Object} product
    */
   async saveEventHandler(e, product) {
     e.preventDefault();
     const formData = new FormData(e.target);
-    // Merge form data into product object
+    // Convert FormData to object and handle checkboxes
     const updatedProduct = { ...product, ...Object.fromEntries(formData) };
     updatedProduct.is_available = !!formData.get('is_available');
     updatedProduct.is_combo = !!formData.get('is_combo');
-    updatedProduct.price = Number(formData.get('price')) || 0;
-    updatedProduct.category_id = Number(formData.get('category_id')) || 0;
+    // Tags: collect all checked tag values
     updatedProduct.tags = Array.from(this.querySelectorAll('.tag-list input[type="checkbox"]:checked')).map(cb => Number(cb.value));
 
-    // Determine API endpoint and HTTP method
+    // Decide API endpoint and method
     let url, method;
     if (this.itemId === "0" || updatedProduct.item_id === 0) {
       url = createMenuItemURL();
@@ -114,7 +147,7 @@ class MenuEditor extends HTMLElement {
       method = 'PUT';
     }
 
-    // Send data to server and handle response
+    // Send to backend
     try {
       const res = await fetch(url, {
         method,
@@ -123,20 +156,28 @@ class MenuEditor extends HTMLElement {
       });
       if (!res.ok) throw new Error('Failed to save product');
       const saved = await res.json();
-      // Dispatch save event with saved product data
+      // Notify parent that save is complete
       this.dispatchEvent(new CustomEvent('save', { detail: saved }));
-      this.close();
     } catch (err) {
       alert('Failed to save product!');
     }
   }
 
-  // --- Utility methods ---
   /**
-   * Returns a template object for a new product.
-   * @return {Object}
+   * Handles cancel button click, navigates back to menu list.
+   * @param {Event} e
+   */
+  cancelEventHandler(e) {
+    e.preventDefault();
+    window.location.hash = '/menu';
+  }
+
+  /**
+   * Returns a template for a new product.
+   * @returns {Object}
    */
   getNewProductTemplate() {
+    const now = new Date().toISOString();
     return {
       item_id: 0,
       name: '',
@@ -148,55 +189,35 @@ class MenuEditor extends HTMLElement {
       description: '',
       is_combo: false,
       is_optional: true,
+      created_at: now,
+      updated_at: now,
       option_groups: [],
       combo_item_groups: []
     };
   }
 
   /**
-   * Formats a date string for display.
-   * @param {string} dateStr
-   * @return {string}
+   * Returns a deep copy of a product by id, or a new template if not found.
+   * @param {number|string} id
+   * @returns {Object}
    */
-  formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    return isNaN(d) ? '-' : d.toLocaleString();
+  getProductCopyById(id) {
+    const original = this._menu.find(p => String(p.item_id) === String(id));
+    return original ? JSON.parse(JSON.stringify(original)) : this.getNewProductTemplate();
   }
 
+  // --- HTML template for the editor ---
   /**
-   * Closes the modal and dispatches a 'close' event.
-   */
-  close() {
-    this.remove();
-    this.dispatchEvent(new CustomEvent('close'));
-  }
-
-  // --- HTML generators ---
-  /**
-   * Returns modal HTML structure.
-   * @return {string}
-   */
-  getHTML() {
+   * Generates the HTML for the product editor.
+   * @param {Object} product - The product data to edit.
+   * @returns {string} The HTML string for the product editor.
+   */ 
+  getHTML(product) {
+    const isNew = product.item_id === 0;
     return `
-      <div class="modal-backdrop"></div>
-      <div class="modal-content"></div>
-    `;
-  }
-
-  /**
-   * Returns the editor form HTML.
-   * @param {boolean} isNew
-   * @param {Object} product
-   * @return {string}
-   */
-  getEditorHTML(isNew, product) {
-    return `
+      <link rel="stylesheet" href="./components/menu/menu-editor.css">
       <div class="editor-container">
-        <div class="editor-header">
-          <h2>${isNew ? 'New Product' : `Editing: ${product.name}`}</h2>
-          <button class="modal-close-btn" id="closeBtn" title="Close">&times;</button>
-        </div>
+        <h2>Product Editor</h2>
         <form id="editorForm">
           <div class="editor-sections">
             <section class="editor-section">
@@ -215,17 +236,10 @@ class MenuEditor extends HTMLElement {
               <label>
                 Category:
                 <select id="category" name="category_id">
-                  ${this.categories.map(cat =>
+                  ${this._categories.map(cat =>
                     `<option value="${cat.category_id}" ${cat.category_id === product.category_id ? 'selected' : ''}>${cat.name}</option>`
                   ).join('')}
                 </select>
-              </label>
-              <label>
-                Image URL:
-                <div class="image-url-row">
-                  <textarea id="image_url" name="image_url" rows="3" style="resize:vertical;">${product.image_url}</textarea>
-                  <img id="imgPreview" src="${product.image_url}" alt="Preview">
-                </div>
               </label>
               <label>
                 Description:
@@ -248,7 +262,7 @@ class MenuEditor extends HTMLElement {
               </label>
               <label class="tag-list">
                 Tags:<br>
-                ${this.tags.map(tag =>
+                ${this._tags.map(tag =>
                   `<label>
                     <input type="checkbox" value="${tag.tag_id}" ${product.tags.includes(tag.tag_id) ? 'checked' : ''}>
                     <span class="tag-badge" style="background:${tag.color};">${tag.name}</span>
@@ -257,7 +271,6 @@ class MenuEditor extends HTMLElement {
               </label>
             </section>
             <section class="editor-section">
-              <!-- Option group/combo group editor can be expanded here -->
               <div id="editor-detail-section"></div>
             </section>
           </div>

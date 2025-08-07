@@ -7,10 +7,7 @@ if (!location.hash) location.hash = '/';
 // Route table: maps hash paths to component file paths
 export const routes = {
   '/': 'dashboard/merchant-dashboard',
-  '/menu': 'menu/menu-list',
-  '/menu/list': 'menu/menu-list',
-  '/menu/edit/:id': 'menu/menu-editor',
-  '/menu/categories': 'menu/category-manager',
+  '/menu': 'menu/menu-management',
   '/inventory': 'inventory/inventory-list',
   '/inventory/list': 'inventory/inventory-list',
   '/inventory/purchase': 'inventory/purchase-list',

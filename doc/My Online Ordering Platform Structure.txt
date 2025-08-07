@@ -93,8 +93,14 @@ merchant-admin/
     ├── menu/
     │   ├── menu-list.js            # Product list
     │   ├── menu-editor.js          # Product editor (with options, combos)
-    │   ├── category-manager.js     # Category management
-    │   └── tag-manager.js          # tag management
+    │   ├── category-list.js        # Category list
+    │   ├── category-editor.js      # Category editor
+    │   ├── tag-list.js             # Tag list
+    │   ├── tag-editor.js           # Tag editor
+    │   ├── option-list.js          # option list
+    │   ├── option-editor.js        # option editor
+    │   ├── option-group-list.js    # option group list
+    │   └── option-group-editor.js  # option group editor
     ├── orders/
     │   ├── order-list.js           # Order list
     │   └── order-detail.js         # Order detail

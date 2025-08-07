@@ -1,6 +1,7 @@
 // Product list component for merchant admin system
 
 import {updateMenuItemURL } from '../../../api.js';
+import './menu-editor.js';
 
 class MenuList extends HTMLElement {
   constructor() {
@@ -11,10 +12,7 @@ class MenuList extends HTMLElement {
   }
   
   // --- Data setters/getters ---
-  set menu(data) {
-    this._menu = data || [];
-    this.renderProductTable();
-  }
+  set menu(data) { this._menu = data || []; }
   set categories(data) { this._categories = data || []; }
   set tags(data) { this._tags = data || []; }
 
@@ -28,10 +26,11 @@ class MenuList extends HTMLElement {
    * Renders initial UI and sets up event listeners.
    */
   connectedCallback() {
+    this._isReady = false;
     this.render();
     this.renderProductTable();
     // Bind resize event to re-render table on window size change
-    this._resizeHandler = () => this.renderProductTable();
+    this._resizeHandler = () => this.handleResize();
     window.addEventListener('resize', this._resizeHandler);
   }
 
@@ -62,6 +61,10 @@ class MenuList extends HTMLElement {
     const tableContainer = this.querySelector('#table');
     // If table container not found, exit
     if (!tableContainer) return;
+    if (!this.menu) {
+      tableContainer.innerHTML = '<div>Loading...</div>';
+      return;
+    }
     // If menu is empty, show empty table message
     if (!this.menu || this.menu.length === 0) {
       tableContainer.innerHTML = this.getEmptyTableHTML();
@@ -82,6 +85,13 @@ class MenuList extends HTMLElement {
     table.querySelectorAll('.toggle-btn').forEach(btn => {
       btn.onclick = () => this.handleToggleClick(btn);
     });
+    this._lastIsMobile = window.innerWidth <= 768;
+    // 手機模式下，卡片點擊即編輯
+    if (this._lastIsMobile) {
+      table.querySelectorAll('.product-card').forEach(card => {
+        card.onclick = () => this.handleEditClick({ dataset: { id: card.dataset.id } });
+      });
+    }
     // Clear previous content and append new table
     tableContainer.innerHTML = '';
     tableContainer.appendChild(table);
@@ -101,7 +111,21 @@ class MenuList extends HTMLElement {
    * @param {HTMLElement} btn
    */
   handleEditClick(btn) {
-    window.location.hash = `/menu/edit/${btn.dataset.id}`;
+    const itemId = btn.dataset.id;
+    const product = this.menu.find(p => String(p.item_id) === String(itemId));
+    const modal = document.createElement('menu-editor');
+    modal.menu = this.menu;
+    modal.categories = this.categories;
+    modal.tags = this.tags;
+    if (this.option_groups) modal.option_groups = this.option_groups;
+    if (this.option_list) modal.option_list = this.option_list;
+    modal.itemId = itemId;
+    modal.addEventListener('save', e => {
+      this.dispatchEvent(new CustomEvent('refresh'));
+      modal.close();
+    });
+    // document.body.appendChild(modal);
+    this.appendChild(modal);
   }
 
   /**
@@ -141,6 +165,14 @@ class MenuList extends HTMLElement {
       product.is_available = !product.is_available;
       this.renderProductTable();
     }
+  }
+
+  handleResize () {
+    // Re-render product table on window resize
+    // if (this._lastIsMobile !== (window.innerWidth <= 768)) {
+    //   console.log('Mobile mode changed:', window.innerWidth <= 768);
+    //   this.renderProductTable();
+    // }
   }
 
   // --- Utility methods ---
@@ -207,10 +239,10 @@ class MenuList extends HTMLElement {
    */
   getHTML() {
     return `
-      <link rel="stylesheet" href="./components/menu/menu-list.css" />
+      <link rel="stylesheet" href="./components/menu/menu-editor.css" />
       <div class="product-list-header">
         <h2>Product List</h2>
-        <button id="addBtn" class="add-btn">Add Product</button>
+        <button id="addBtn" class="add-btn"><span>Add Product</span></button>
       </div>
       <div id="table"></div>
     `;
@@ -238,16 +270,28 @@ class MenuList extends HTMLElement {
         ${this.menu.map((item, idx) => `
           <tr>
             <td colspan="7" style="padding:0;">
-              <div class="product-card">
+              <div class="product-card" data-id="${item.item_id}">
                 <img src="${item.image_url}" alt="${item.name}" class="product-card-img">
-                <div class="product-card-info">
-                  <div class="product-card-title">${item.name}</div>
-                  <div class="product-card-price">$${item.price}</div>
-                  ${!item.is_available ? `<div class="product-card-unavailable">Unavailable</div>` : ''}
-                </div>
-                <div class="product-card-actions">
-                  <button class="action-btn editBtn" data-id="${item.item_id}" title="Edit">✏️</button>
-                  <button class="action-btn deleteBtn" data-id="${item.item_id}" title="Delete">🗑️</button>
+                <div class="product-card-info product-card-info-mobile">
+                  <div class="product-card-row">
+                    <div class="product-card-main">
+                      <div class="product-card-title">
+                        ${item.name}
+                        ${!item.is_available ? `<span class="product-card-unavailable">Unavailable</span>` : ''}
+                      </div>
+                      <div class="product-card-category-tags">
+                        <span class="product-card-category">${this.getCategoryName(item.category_id)}</span>
+                        <span class="product-card-tags">
+                          ${this.getTagNames(item.tags).map(tag => 
+                            `<span class="tag-badge" style="color:${tag.color};">${tag.name}</span>`
+                          ).join('')}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="product-card-side">
+                      <div class="product-card-price">$${item.price}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </td>

@@ -1,0 +1,58 @@
+@import './list-base.css';
+
+/* ========================================================================== */
+/*  Option Group List - Custom Styles (Overrides and Additions)               */
+/* ========================================================================== */
+
+/* Label for multiple selection groups */
+.multiple-label {
+  color: #2563eb;
+  background: #e0e7ff;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.97em;
+  font-weight: 500;
+}
+
+/* Label for single selection groups */
+.single-label {
+  color: #22c55e;
+  background: #dcfce7;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.97em;
+  font-weight: 500;
+}
+
+/* Row container for each option group card in mobile view */
+.mobile-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+/* Option group ID text style for mobile */
+.group-id-mobile {
+  font-size: 0.95em;
+  color: #888;
+  margin-left: 8px;
+}
+
+/* Status label container for mobile (multiple/single) */
+.mobile-multiple-status {
+  margin-left: 4px;
+  display: flex;
+  align-items: center;
+}
+
+/* Option list text for mobile card */
+.option-list-mobile {
+  margin-top: 6px;
+  font-size: 0.97em;
+  color: #555;
+  word-break: break-all;
+}
+.option-list-mobile span {
+  color: #64748b;
+}

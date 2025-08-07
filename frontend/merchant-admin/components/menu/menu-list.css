@@ -1,146 +1,72 @@
-.product-list-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
+@import './list-base.css';
+
+/* ========================================================================== */
+/*  Menu List - Custom Styles (Overrides and Additions)                      */
+/* ========================================================================== */
+
+/* Product image styles for menu list (desktop) */
+img.product-card-img, td > img {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f3f4f6;
 }
-.product-list-header h2 {
-    margin: 0;
-    font-size: 1.5em;
-}
-.add-btn {
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    padding: 8px 18px;
-    border-radius: 6px;
-    font-size: 1em;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.add-btn:hover {
-    background: #1e40af;
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #fff;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-}
-th, td {
-    padding: 12px 8px;
-    text-align: left;
-}
-th {
-    background: #f3f4f6;
-    font-weight: 600;
-}
-tr:nth-child(even) {
-    background: #f9fafb;
-}
-img {
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-}
-.action-btn {
-    background: #f3f4f6;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 12px;
-    margin-right: 4px;
-    cursor: pointer;
-    font-size: 0.95em;
-    transition: background 0.2s;
-}
-.action-btn.editBtn {
-    color: #2563eb;
-}
+
+/* Delete button color for action buttons */
 .action-btn.deleteBtn {
-    color: #dc2626;
+  color: #dc2626;
 }
-.action-btn:hover {
-    background: #e0e7ef;
-}
+
+/* Toggle switch styles for menu item availability */
 .toggle-btn {
-    background: #e5e7eb;
-    border: none;
-    border-radius: 16px;
-    width: 48px;
-    height: 24px;
-    position: relative;
-    cursor: pointer;
-    transition: background 0.2s;
+  width: 38px;
+  height: 22px;
+  border-radius: 12px;
+  background: #e5e7eb;
+  border: none;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  vertical-align: middle;
+  margin: 0 2px;
 }
 .toggle-btn.active {
-    background: #34d399;
+  background: #22c55e;
 }
 .toggle-knob {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20px;
-    height: 20px;
-    background: #fff;
-    border-radius: 50%;
-    transition: left 0.2s;
+  display: block;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left 0.2s;
 }
 .toggle-btn.active .toggle-knob {
-    left: 26px;
+  left: 18px;
 }
-.empty-table-message {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 220px;
-  color: #888;
-  font-size: 1.3em;
-  font-weight: bold;
-  background: #f9fafb;
-  border-radius: 30px;
-  border: 2px dashed #e5e7eb;
-  margin: 24px 0;
+
+/* Tag badge for menu item tags (desktop) */
+.tag-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.97em;
+  font-weight: 500;
+  margin-right: 2px;
+  margin-bottom: 2px;
+  background: #888;
+  color: #fff;
 }
-.empty-table-message .empty-icon {
-  font-size: 2.5em;
-  margin-bottom: 12px;
-}
-.empty-table-message a {
-  color: #2563eb;
-}
+
+/* ========================================================================== */
+/*  Responsive Styles (Mobile)                                                */
+/* ========================================================================== */
 @media (max-width: 768px) {
-  .product-card {
-    display: flex;
-    align-items: center;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-    margin-bottom: 18px;
-    padding: 12px;
-    gap: 12px;
-    position: relative;
-  }
-  .product-card-actions {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    align-items: center;
-    justify-content: flex-end;
-    min-width: 48px;
-    margin-left: auto;
-  }
-  .action-btn {
-    background: none;
-    border: none;
-    font-size: 1.2em;
-    cursor: pointer;
-    padding: 4px 8px;
-    color: #2563eb;
-  }
-  .action-btn.deleteBtn {
-    color: #e53e3e;
-  }
+  /* Product image styles for mobile card */
   .product-card-img {
     width: 64px;
     height: 64px;
@@ -148,7 +74,9 @@ img {
     object-fit: cover;
     background: #f3f4f6;
     flex-shrink: 0;
+    margin-right: 14px;
   }
+  /* Info section for mobile card */
   .product-card-info {
     flex: 1;
     display: flex;
@@ -156,20 +84,109 @@ img {
     gap: 6px;
     min-width: 0;
   }
+  /* Title for mobile card */
   .product-card-title {
     font-size: 1.1em;
     font-weight: bold;
     word-break: break-all;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
+  /* Price for mobile card */
   .product-card-price {
     font-size: 1em;
     color: #2563eb;
     font-weight: bold;
+    margin-bottom: 2px;
   }
+  /* Category label for mobile card */
+  .product-card-category {
+    font-size: 0.97em;
+    color: #374151;
+    margin-bottom: 0;
+    white-space: nowrap;
+  }
+  /* Category tags for mobile card */
+  .product-card-category-tags {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+    flex-wrap: wrap;
+  }
+  /* Tag list for mobile card */
+  .product-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0;
+  }
+  /* Tag badge for mobile card */
+  .tag-badge {
+    display: inline-block;
+    padding: 0 2px;
+    border-radius: 0;
+    font-size: 0.97em;
+    font-weight: 500;
+    margin-right: 6px;
+    margin-bottom: 2px;
+    background: none !important;
+    color: inherit;
+  }
+  /* Unavailable label for mobile card */
   .product-card-unavailable {
     color: #e53e3e;
     font-size: 0.95em;
     font-weight: bold;
+    margin-left: 8px;
+    vertical-align: middle;
+    display: inline-block;
+  }
+  /* Hide actions in mobile card */
+  .product-card-actions,
+  .action-btn.deleteBtn {
+    display: none !important;
+  }
+  /* Info section for mobile card (full width) */
+  .product-card-info-mobile {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+  /* Row layout for mobile card */
+  .product-card-row {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+  /* Main info column for mobile card */
+  .product-card-main {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  /* Side info column for mobile card */
+  .product-card-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 70px;
+    margin-left: 8px;
     margin-top: 2px;
+  }
+  /* Price for mobile card (side column) */
+  .product-card-price {
+    color: #2563eb;
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-bottom: 0;
+    text-align: right;
   }
 }
