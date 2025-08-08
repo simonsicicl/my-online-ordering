@@ -1,5 +1,7 @@
 // Modal-style Option Group Editor for merchant admin system
 
+import { createOptionGroupURL, updateOptionGroupURL } from "../../../api.js";
+
 class OptionGroupEditor extends HTMLElement {
   // --- Data setters/getters ---
   set group(data) { this._group = data || this.getNewGroupTemplate(); }
@@ -72,7 +74,29 @@ class OptionGroupEditor extends HTMLElement {
       is_multiple: !!formData.get('is_multiple'),
       option_ids: selectedOptions
     };
-    this.dispatchEvent(new CustomEvent('save', { detail: updatedGroup }));
+    let url;
+    if (group.option_group_id) {
+      url = updateOptionGroupURL(group.option_group_id);
+    } else {
+      url = createOptionGroupURL();
+    }
+    try {
+      const response = await fetch(url, {
+        method: group.option_group_id ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedGroup)
+      });
+      if (!response.ok) throw new Error('Failed to save option group');
+      const saved = await response.json();
+      console.log(`Option group ${group.option_group_id ? 'updated' : 'created'} successfully`, saved);
+    } catch (error) {
+      alert('Failed to save option group!');
+      console.error('Error saving option group:', error);
+    }
+    // Dispatch save event with updated group
+    this.dispatchEvent(new CustomEvent('save'));
     this.close();
   }
 

@@ -123,12 +123,14 @@ class MenuEditor extends HTMLElement {
       });
       if (!res.ok) throw new Error('Failed to save product');
       const saved = await res.json();
-      // Dispatch save event with saved product data
-      this.dispatchEvent(new CustomEvent('save', { detail: saved }));
-      this.close();
+      console.log(`Product ${(this.itemId === "0" || updatedProduct.item_id === 0) ? 'created' : 'updated'} successfully!`, saved); // TEST
     } catch (err) {
       alert('Failed to save product!');
+      console.error('Error saving product:', err);
     }
+      // Dispatch save event with saved product data
+    this.dispatchEvent(new CustomEvent('save'));
+    this.close();
   }
 
   // --- Utility methods ---

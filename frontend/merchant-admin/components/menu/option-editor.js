@@ -1,5 +1,7 @@
 // Modal-style Option Editor for merchant admin system
 
+import { createOptionURL, updateOptionURL } from '../../../api.js';
+
 class OptionEditor extends HTMLElement {
   // --- Data setters/getters ---
   set option(data) { this._option = data || this.getNewOptionTemplate(); }
@@ -67,8 +69,29 @@ class OptionEditor extends HTMLElement {
       price_delta: Number(formData.get('price_delta')) || 0,
       is_active: !!formData.get('is_active'),
     };
+    let url;
+    if (updatedOption.option_id) {
+      // Update existing option
+      url = updateOptionURL(updatedOption.option_id);
+    } else {
+      // Create new option
+      url = createOptionURL();
+    }
+    try {
+      const res = await fetch(url, {
+        method: updatedOption.option_id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedOption)
+      });
+      if (!res.ok) throw new Error('Failed to save option');
+      const saved = await res.json();
+      console.log(`Option ${updatedOption.option_id ? 'updated' : 'created'} successfully!`, saved); // TEST
+    } catch (err) {
+      alert('Failed to save option!');
+      console.error('Error saving option:', err);
+    }
     // Dispatch 'save' event for parent to handle API or data update
-    this.dispatchEvent(new CustomEvent('save', { detail: updatedOption }));
+    this.dispatchEvent(new CustomEvent('save'));
     this.close();
   }
 

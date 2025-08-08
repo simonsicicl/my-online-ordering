@@ -1,5 +1,7 @@
 // Modal-style Category Editor for merchant admin system
 
+import { createCategoryURL, updateCategoryURL } from "../../../api";
+
 class CategoryEditor extends HTMLElement {
   // --- Data setters/getters ---
   set category(data) { this._category = data || this.getNewCategoryTemplate(); }
@@ -66,6 +68,28 @@ class CategoryEditor extends HTMLElement {
       name: formData.get('name') || '',
       is_active: !!formData.get('is_active')
     };
+    let url;
+    if (updatedCategory.category_id) {
+      url = updateCategoryURL(updatedCategory.category_id);
+    } else {
+      url = createCategoryURL();
+    }
+    try {
+      const res = await fetch(url, {
+        method: updatedCategory.category_id ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedCategory)
+      });
+      if (!res.ok) throw new Error('Network response was not ok');
+      const saved = await res.json();
+      console.log(`Category ${updatedCategory.category_id ? 'updated' : 'created'} successfully`, saved);
+    } catch (error) {
+      alert('Failed to save category!');
+      console.error('Error saving category:', error);
+    }
+    // Dispatch save event with updated category
     this.dispatchEvent(new CustomEvent('save', { detail: updatedCategory }));
     this.close();
   }

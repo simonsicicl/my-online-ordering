@@ -1,5 +1,7 @@
 // Modal-style Tag Editor for merchant admin system
 
+import { createTagURL, updateTagURL } from '../../../api.js';
+
 class TagEditor extends HTMLElement {
   // --- Data setters/getters ---
   set tag(data) { this._tag = data || this.getNewTagTemplate(); }
@@ -67,7 +69,29 @@ class TagEditor extends HTMLElement {
       color: formData.get('color') || '#888',
       is_active: !!formData.get('is_active')
     };
-    this.dispatchEvent(new CustomEvent('save', { detail: updatedTag }));
+    let url;
+    if (updatedTag.tag_id) {
+      url = updateTagURL(updatedTag.tag_id);
+    } else {
+      url = createTagURL();
+    }
+    try {
+      const res = await fetch(url, {
+        method: updatedTag.tag_id ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedTag)
+      });
+      if (!res.ok) throw new Error('Network response was not ok');
+      const saved = await response.json();
+      console.log(`Tag ${isNew ? 'created' : 'updated'} successfully:`, saved);
+    } catch (error) {
+      alert('Failed to save tag!');
+      console.error('Error saving tag:', error);
+    }
+    // Dispatch save event with updated tag
+    this.dispatchEvent(new CustomEvent('save'));
     this.close();
   }
 
