@@ -48,12 +48,68 @@ functions:
           path: /categories
           method: get
           cors: true
+  getCategory:
+    handler: handler.get_category
+    events:
+      - http:
+          path: /categories/{category_id}
+          method: get
+          cors: true
+  createCategory:
+    handler: handler.create_category
+    events:
+      - http:
+          path: /categories
+          method: post
+          cors: true
+  updateCategory:
+    handler: handler.update_category
+    events:
+      - http:
+          path: /categories/{category_id}
+          method: put
+          cors: true
+  deleteCategory:
+    handler: handler.delete_category
+    events:
+      - http:
+          path: /categories/{category_id}
+          method: delete
+          cors: true
   getTags:
     handler: handler.get_tags
     events:
       - http:
           path: /tags
           method: get
+          cors: true
+  getTag:
+    handler: handler.get_tag
+    events:
+      - http:
+          path: /tags/{tag_id}
+          method: get
+          cors: true
+  createTag:
+    handler: handler.create_tag
+    events:
+      - http:
+          path: /tags
+          method: post
+          cors: true
+  updateTag:
+    handler: handler.update_tag
+    events:
+      - http:
+          path: /tags/{tag_id}
+          method: put
+          cors: true
+  deleteTag:
+    handler: handler.delete_tag
+    events:
+      - http:
+          path: /tags/{tag_id}
+          method: delete
           cors: true
   getOptionGroups:
     handler: handler.get_option_groups
@@ -62,10 +118,66 @@ functions:
           path: /option-groups
           method: get
           cors: true
+  getOptionGroup:
+    handler: handler.get_option_group
+    events:
+      - http:
+          path: /option-groups/{option_group_id}
+          method: get
+          cors: true
+  createOptionGroup:
+    handler: handler.create_option_group
+    events:
+      - http:
+          path: /option-groups
+          method: post
+          cors: true
+  updateOptionGroup:
+    handler: handler.update_option_group
+    events:
+      - http:
+          path: /option-groups/{option_group_id}
+          method: put
+          cors: true
+  deleteOptionGroup:
+    handler: handler.delete_option_group
+    events:
+      - http:
+          path: /option-groups/{option_group_id}
+          method: delete
+          cors: true
   getOptionList:
     handler: handler.get_option_list
     events:
       - http:
           path: /option-list
           method: get
+          cors: true
+  getOption:
+    handler: handler.get_option
+    events:
+      - http:
+          path: /option-list/{option_id}
+          method: get
+          cors: true
+  createOption:
+    handler: handler.create_option
+    events:
+      - http:
+          path: /option-list
+          method: post
+          cors: true
+  updateOption:
+    handler: handler.update_option
+    events:
+      - http:
+          path: /option-list/{option_id}
+          method: put
+          cors: true
+  deleteOption:
+    handler: handler.delete_option
+    events:
+      - http:
+          path: /option-list/{option_id}
+          method: delete
           cors: true

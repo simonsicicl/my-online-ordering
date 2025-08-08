@@ -9,9 +9,25 @@ export const createMenuItemURL = () => `${MENU_SERVICE_API_BASE}/menu`;
 export const updateMenuItemURL = (itemId) => `${MENU_SERVICE_API_BASE}/menu/${itemId}`;
 export const deleteMenuItemURL = (itemId) => `${MENU_SERVICE_API_BASE}/menu/${itemId}`;
 export const getCategoriesURL = () => `${MENU_SERVICE_API_BASE}/categories`;
+export const getCategoryURL = (categoryId) => `${MENU_SERVICE_API_BASE}/categories/${categoryId}`;
+export const createCategoryURL = () => `${MENU_SERVICE_API_BASE}/categories`;
+export const updateCategoryURL = (categoryId) => `${MENU_SERVICE_API_BASE}/categories/${categoryId}`;
+export const deleteCategoryURL = (categoryId) => `${MENU_SERVICE_API_BASE}/categories/${categoryId}`;
 export const getTagsURL = () => `${MENU_SERVICE_API_BASE}/tags`;
+export const getTagURL = (tagId) => `${MENU_SERVICE_API_BASE}/tags/${tagId}`;
+export const createTagURL = () => `${MENU_SERVICE_API_BASE}/tags`;
+export const updateTagURL = (tagId) => `${MENU_SERVICE_API_BASE}/tags/${tagId}`;
+export const deleteTagURL = (tagId) => `${MENU_SERVICE_API_BASE}/tags/${tagId}`;
 export const getOptionGroupsURL = () => `${MENU_SERVICE_API_BASE}/option-groups`;
-export const getOptionListURL = () => `${MENU_SERVICE_API_BASE}/option-list`; // 新增 option-list API
+export const getOptionGroupURL = (optionGroupId) => `${MENU_SERVICE_API_BASE}/option-groups/${optionGroupId}`;
+export const createOptionGroupURL = () => `${MENU_SERVICE_API_BASE}/option-groups`;
+export const updateOptionGroupURL = (optionGroupId) => `${MENU_SERVICE_API_BASE}/option-groups/${optionGroupId}`;
+export const deleteOptionGroupURL = (optionGroupId) => `${MENU_SERVICE_API_BASE}/option-groups/${optionGroupId}`;
+export const getOptionListURL = () => `${MENU_SERVICE_API_BASE}/option-list`;
+export const getOptionURL = (optionId) => `${MENU_SERVICE_API_BASE}/option-list/${optionId}`;
+export const createOptionURL = () => `${MENU_SERVICE_API_BASE}/option-list`;
+export const updateOptionURL = (optionId) => `${MENU_SERVICE_API_BASE}/option-list/${optionId}`;
+export const deleteOptionURL = (optionId) => `${MENU_SERVICE_API_BASE}/option-list/${optionId}`;
 
 // Order API helpers
 export const getOrdersURL = () => `${ORDER_SERVICE_API_BASE}/orders`;
