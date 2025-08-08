@@ -1,6 +1,6 @@
 // Modal-style Category Editor for merchant admin system
 
-import { createCategoryURL, updateCategoryURL } from "../../../api.js";
+import { createCategoryURL, updateCategoryURL, deleteCategoryURL } from "../../../api.js";
 
 class CategoryEditor extends HTMLElement {
   // --- Data setters/getters ---
@@ -51,6 +51,35 @@ class CategoryEditor extends HTMLElement {
     // Bind form submit event
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, category);
+
+    // Bind delete button event (only for existing categories)
+    const deleteBtn = this.querySelector('#deleteBtn');
+    if (deleteBtn) deleteBtn.onclick = (e) => this.deleteEventHandler(e, category);
+  }
+
+  /**
+   * Handles category deletion, sends DELETE request to server.
+   * Dispatches 'delete' event on success.
+   * @param {Event} e
+   * @param {Object} category
+   */
+  async deleteEventHandler(e, category) {
+    e.preventDefault();
+    if (!category.category_id) return;
+    if (!confirm('Are you sure you want to delete this category?')) return;
+    try {
+      const res = await fetch(deleteCategoryURL(category.category_id), {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete category');
+      const result = await res.json();
+      console.log('Category deleted successfully!', result); // TEST
+      this.dispatchEvent(new CustomEvent('delete', { detail: category.category_id }));
+      this.close();
+    } catch (err) {
+      alert('Failed to delete category!');
+      console.error('Error deleting category:', err);
+    }
   }
 
   // --- Event handlers ---
@@ -68,29 +97,31 @@ class CategoryEditor extends HTMLElement {
       name: formData.get('name') || '',
       is_active: !!formData.get('is_active')
     };
-    let url;
+    let url, method, saved;
     if (updatedCategory.category_id) {
       url = updateCategoryURL(updatedCategory.category_id);
+      method = 'PUT';
     } else {
       url = createCategoryURL();
+      method = 'POST';
     }
     try {
       const res = await fetch(url, {
-        method: updatedCategory.category_id ? 'PUT' : 'POST',
+        method: method,
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(updatedCategory)
       });
       if (!res.ok) throw new Error('Network response was not ok');
-      const saved = await res.json();
+      saved = await res.json();
       console.log(`Category ${updatedCategory.category_id ? 'updated' : 'created'} successfully`, saved);
     } catch (error) {
       alert('Failed to save category!');
       console.error('Error saving category:', error);
     }
     // Dispatch save event with updated category
-    this.dispatchEvent(new CustomEvent('save', { detail: updatedCategory }));
+    this.dispatchEvent(new CustomEvent('save', { detail: saved }));
     this.close();
   }
 
@@ -141,6 +172,7 @@ class CategoryEditor extends HTMLElement {
             </label>
           </div>
           <div class="form-actions">
+            ${!isNew ? `<button type="button" id="deleteBtn" class="delete-btn">Delete</button>` : ''}
             <button type="button" id="cancelBtn" class="cancel-btn">Cancel</button>
             <button type="submit" class="save-btn">Save</button>
           </div>

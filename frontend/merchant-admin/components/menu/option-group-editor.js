@@ -1,6 +1,6 @@
 // Modal-style Option Group Editor for merchant admin system
 
-import { createOptionGroupURL, updateOptionGroupURL } from "../../../api.js";
+import { createOptionGroupURL, updateOptionGroupURL, deleteOptionGroupURL } from "../../../api.js";
 
 class OptionGroupEditor extends HTMLElement {
   // --- Data setters/getters ---
@@ -54,6 +54,35 @@ class OptionGroupEditor extends HTMLElement {
     // Bind form submit event
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, group);
+
+    // Bind delete button event (only for existing groups)
+    const deleteBtn = this.querySelector('#deleteBtn');
+    if (deleteBtn) deleteBtn.onclick = (e) => this.deleteEventHandler(e, group);
+  }
+
+  /**
+   * Handles option group deletion, sends DELETE request to server.
+   * Dispatches 'delete' event on success.
+   * @param {Event} e
+   * @param {Object} group
+   */
+  async deleteEventHandler(e, group) {
+    e.preventDefault();
+    if (!group.option_group_id) return;
+    if (!confirm('Are you sure you want to delete this option group?')) return;
+    try {
+      const res = await fetch(deleteOptionGroupURL(group.option_group_id), {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete option group');
+      const result = await res.json();
+      console.log('Option group deleted successfully!', result); // TEST
+      this.dispatchEvent(new CustomEvent('delete', { detail: group.option_group_id }));
+      this.close();
+    } catch (err) {
+      alert('Failed to delete option group!');
+      console.error('Error deleting option group:', err);
+    }
   }
 
   // --- Event handlers ---
@@ -74,29 +103,31 @@ class OptionGroupEditor extends HTMLElement {
       is_multiple: !!formData.get('is_multiple'),
       option_ids: selectedOptions
     };
-    let url;
+    let url, method, saved;
     if (group.option_group_id) {
       url = updateOptionGroupURL(group.option_group_id);
+      method = 'PUT';
     } else {
       url = createOptionGroupURL();
+      method = 'POST';
     }
     try {
       const response = await fetch(url, {
-        method: group.option_group_id ? 'PUT' : 'POST',
+        method: method,
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(updatedGroup)
       });
       if (!response.ok) throw new Error('Failed to save option group');
-      const saved = await response.json();
+      saved = await response.json();
       console.log(`Option group ${group.option_group_id ? 'updated' : 'created'} successfully`, saved);
     } catch (error) {
       alert('Failed to save option group!');
       console.error('Error saving option group:', error);
     }
     // Dispatch save event with updated group
-    this.dispatchEvent(new CustomEvent('save'));
+    this.dispatchEvent(new CustomEvent('save', { detail: saved }));
     this.close();
   }
 
@@ -167,6 +198,7 @@ class OptionGroupEditor extends HTMLElement {
             </label>
           </div>
           <div class="form-actions">
+            ${!isNew ? `<button type="button" id="deleteBtn" class="delete-btn">Delete</button>` : ''}
             <button type="button" id="cancelBtn" class="cancel-btn">Cancel</button>
             <button type="submit" class="save-btn">Save</button>
           </div>

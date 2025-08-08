@@ -1,6 +1,6 @@
 // Modal-style Option Editor for merchant admin system
 
-import { createOptionURL, updateOptionURL } from '../../../api.js';
+import { createOptionURL, updateOptionURL, deleteOptionURL } from '../../../api.js';
 
 class OptionEditor extends HTMLElement {
   // --- Data setters/getters ---
@@ -51,6 +51,34 @@ class OptionEditor extends HTMLElement {
     // Bind form submit event
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, option);
+
+    // Bind delete button event (only for existing options)
+    const deleteBtn = this.querySelector('#deleteBtn');
+    if (deleteBtn) deleteBtn.onclick = (e) => this.deleteEventHandler(e, option);
+  }
+  /**
+   * Handles option deletion, sends DELETE request to server.
+   * Dispatches 'delete' event on success.
+   * @param {Event} e
+   * @param {Object} option
+   */
+  async deleteEventHandler(e, option) {
+    e.preventDefault();
+    if (!option.option_id) return;
+    if (!confirm('Are you sure you want to delete this option?')) return;
+    try {
+      const res = await fetch(deleteOptionURL(option.option_id), {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete option');
+      const result = await res.json();
+      console.log('Option deleted successfully!', result); // TEST
+      this.dispatchEvent(new CustomEvent('delete', { detail: option.option_id }));
+      this.close();
+    } catch (err) {
+      alert('Failed to delete option!');
+      console.error('Error deleting option:', err);
+    }
   }
 
   // --- Event handlers ---
@@ -69,29 +97,31 @@ class OptionEditor extends HTMLElement {
       price_delta: Number(formData.get('price_delta')) || 0,
       is_active: !!formData.get('is_active'),
     };
-    let url;
+    let url, method, saved;
     if (updatedOption.option_id) {
       // Update existing option
       url = updateOptionURL(updatedOption.option_id);
+      method = 'PUT';
     } else {
       // Create new option
       url = createOptionURL();
+      method = 'POST';
     }
     try {
       const res = await fetch(url, {
-        method: updatedOption.option_id ? 'PUT' : 'POST',
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedOption)
       });
       if (!res.ok) throw new Error('Failed to save option');
-      const saved = await res.json();
+      saved = await res.json();
       console.log(`Option ${updatedOption.option_id ? 'updated' : 'created'} successfully!`, saved); // TEST
     } catch (err) {
       alert('Failed to save option!');
       console.error('Error saving option:', err);
     }
     // Dispatch 'save' event for parent to handle API or data update
-    this.dispatchEvent(new CustomEvent('save'));
+    this.dispatchEvent(new CustomEvent('save', { detail: saved }));
     this.close();
   }
 
@@ -147,6 +177,7 @@ class OptionEditor extends HTMLElement {
             </label>
           </div>
           <div class="form-actions">
+            ${!isNew ? `<button type="button" id="deleteBtn" class="delete-btn">Delete</button>` : ''}
             <button type="button" id="cancelBtn" class="cancel-btn">Cancel</button>
             <button type="submit" class="save-btn">Save</button>
           </div>

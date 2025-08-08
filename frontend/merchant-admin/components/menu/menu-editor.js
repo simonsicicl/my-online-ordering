@@ -2,7 +2,8 @@
 
 import {
   createMenuItemURL,
-  updateMenuItemURL
+  updateMenuItemURL,
+  deleteMenuItemURL
 } from '../../../api.js';
 
 class MenuEditor extends HTMLElement {
@@ -84,6 +85,35 @@ class MenuEditor extends HTMLElement {
     // Bind form submit event
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, product);
+
+    // Bind delete button event (only for existing products)
+    const deleteBtn = this.querySelector('#deleteBtn');
+    if (deleteBtn) deleteBtn.onclick = (e) => this.deleteEventHandler(e, product);
+  }
+
+  /**
+   * Handles product deletion, sends DELETE request to server.
+   * Dispatches 'delete' event on success.
+   * @param {Event} e
+   * @param {Object} product
+   */
+  async deleteEventHandler(e, product) {
+    e.preventDefault();
+    if (!product.item_id) return;
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    try {
+      const res = await fetch(deleteMenuItemURL(product.item_id), {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete product');
+      const result = await res.json();
+      console.log('Product deleted successfully!', result); // TEST
+    } catch (err) {
+      alert('Failed to delete product!');
+      console.error('Error deleting product:', err);
+    }
+    this.dispatchEvent(new CustomEvent('delete', { detail: product.item_id }));
+    this.close();
   }
 
   // --- Event handlers ---
@@ -105,7 +135,7 @@ class MenuEditor extends HTMLElement {
     updatedProduct.tags = Array.from(this.querySelectorAll('.tag-list input[type="checkbox"]:checked')).map(cb => Number(cb.value));
 
     // Determine API endpoint and HTTP method
-    let url, method;
+    let url, method, saved;
     if (this.itemId === "0" || updatedProduct.item_id === 0) {
       url = createMenuItemURL();
       method = 'POST';
@@ -122,14 +152,14 @@ class MenuEditor extends HTMLElement {
         body: JSON.stringify(updatedProduct)
       });
       if (!res.ok) throw new Error('Failed to save product');
-      const saved = await res.json();
+      saved = await res.json();
       console.log(`Product ${(this.itemId === "0" || updatedProduct.item_id === 0) ? 'created' : 'updated'} successfully!`, saved); // TEST
     } catch (err) {
       alert('Failed to save product!');
       console.error('Error saving product:', err);
     }
       // Dispatch save event with saved product data
-    this.dispatchEvent(new CustomEvent('save'));
+    this.dispatchEvent(new CustomEvent('save', { detail: saved }));
     this.close();
   }
 
@@ -264,6 +294,7 @@ class MenuEditor extends HTMLElement {
             </section>
           </div>
           <div class="form-actions">
+            ${!isNew ? `<button type="button" id="deleteBtn" class="delete-btn">Delete</button>` : ''}
             <button type="button" id="cancelBtn" class="cancel-btn">Cancel</button>
             <button type="submit" class="save-btn">Save</button>
           </div>

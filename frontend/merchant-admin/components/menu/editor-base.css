@@ -169,6 +169,25 @@ button[disabled] {
     box-shadow: none !important;
 }
 
+/* === Delete Button Styles === */
+.delete-btn {
+    background: #e53e3e;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    box-shadow: 0 1px 4px rgba(229,62,62,0.08);
+    order: -1;
+    margin-right: auto;
+}
+.delete-btn:hover, .delete-btn:focus {
+    background: #c53030;
+    box-shadow: 0 2px 8px rgba(229,62,62,0.18);
+}
+
 /* === Responsive Styles === */
 @media (max-width: 700px) {
     .editor-container {
@@ -185,5 +204,11 @@ button[disabled] {
     .form-actions {
         flex-direction: column;
         gap: 8px;
+        align-items: stretch;
+    }
+    .delete-btn {
+        margin-right: auto;
+        margin-bottom: 0;
+        width: 100%;
     }
 }

@@ -1,6 +1,6 @@
 // Modal-style Tag Editor for merchant admin system
 
-import { createTagURL, updateTagURL } from '../../../api.js';
+import { createTagURL, updateTagURL, deleteTagURL } from '../../../api.js';
 
 class TagEditor extends HTMLElement {
   // --- Data setters/getters ---
@@ -51,6 +51,35 @@ class TagEditor extends HTMLElement {
     // Bind form submit event
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, tag);
+
+    // Bind delete button event (only for existing tags)
+    const deleteBtn = this.querySelector('#deleteBtn');
+    if (deleteBtn) deleteBtn.onclick = (e) => this.deleteEventHandler(e, tag);
+  }
+
+  /**
+   * Handles tag deletion, sends DELETE request to server.
+   * Dispatches 'delete' event on success.
+   * @param {Event} e
+   * @param {Object} tag
+   */
+  async deleteEventHandler(e, tag) {
+    e.preventDefault();
+    if (!tag.tag_id) return;
+    if (!confirm('Are you sure you want to delete this tag?')) return;
+    try {
+      const res = await fetch(deleteTagURL(tag.tag_id), {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete tag');
+      const result = await res.json();
+      console.log('Tag deleted successfully!', result); // TEST
+      this.dispatchEvent(new CustomEvent('delete', { detail: tag.tag_id }));
+      this.close();
+    } catch (err) {
+      alert('Failed to delete tag!');
+      console.error('Error deleting tag:', err);
+    }
   }
 
   // --- Event handlers ---
@@ -69,29 +98,31 @@ class TagEditor extends HTMLElement {
       color: formData.get('color') || '#888',
       is_active: !!formData.get('is_active')
     };
-    let url;
+    let url, method, saved;
     if (updatedTag.tag_id) {
       url = updateTagURL(updatedTag.tag_id);
+      method = 'PUT';
     } else {
       url = createTagURL();
+      method = 'POST';
     }
     try {
       const res = await fetch(url, {
-        method: updatedTag.tag_id ? 'PUT' : 'POST',
+        method: method,
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(updatedTag)
       });
       if (!res.ok) throw new Error('Network response was not ok');
-      const saved = await res.json();
+      saved = await res.json();
       console.log(`Tag ${updatedTag.tag_id ? 'created' : 'updated'} successfully:`, saved);
     } catch (error) {
       alert('Failed to save tag!');
       console.error('Error saving tag:', error);
     }
     // Dispatch save event with updated tag
-    this.dispatchEvent(new CustomEvent('save'));
+    this.dispatchEvent(new CustomEvent('save', { detail: saved }));
     this.close();
   }
 
@@ -148,6 +179,7 @@ class TagEditor extends HTMLElement {
             </label>
           </div>
           <div class="form-actions">
+            ${!isNew ? `<button type="button" id="deleteBtn" class="delete-btn">Delete</button>` : ''}
             <button type="button" id="cancelBtn" class="cancel-btn">Cancel</button>
             <button type="submit" class="save-btn">Save</button>
           </div>
