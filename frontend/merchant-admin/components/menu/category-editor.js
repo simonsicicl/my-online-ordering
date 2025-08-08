@@ -1,6 +1,6 @@
 // Modal-style Category Editor for merchant admin system
 
-import { createCategoryURL, updateCategoryURL } from "../../../api";
+import { createCategoryURL, updateCategoryURL } from "../../../api.js";
 
 class CategoryEditor extends HTMLElement {
   // --- Data setters/getters ---

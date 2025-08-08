@@ -84,8 +84,8 @@ class TagEditor extends HTMLElement {
         body: JSON.stringify(updatedTag)
       });
       if (!res.ok) throw new Error('Network response was not ok');
-      const saved = await response.json();
-      console.log(`Tag ${isNew ? 'created' : 'updated'} successfully:`, saved);
+      const saved = await res.json();
+      console.log(`Tag ${updatedTag.tag_id ? 'created' : 'updated'} successfully:`, saved);
     } catch (error) {
       alert('Failed to save tag!');
       console.error('Error saving tag:', error);
