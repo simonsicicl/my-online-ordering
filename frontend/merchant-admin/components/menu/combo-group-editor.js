@@ -1,245 +1,294 @@
+// Combo Group Editor
+// Edits product.combo_item_groups in-place. No need to emit change events for data sync.
 
-/**
- * ComboGroupEditor - Custom element for managing combo item groups in a product
- * Allows adding, editing, and removing combo groups and their items
- */
 class ComboGroupEditor extends HTMLElement {
-  // Setter for product data; triggers re-render when data changes
-  set value(data) { this._data = data; this.render(); }
-  // Setter for menu data (list of available items)
-  set menu(data) { this._menu = data; }
-  // Getter for current product data
-  get value() { return this._data; }
-
-  // Called when element is added to the DOM
-  connectedCallback() { this.render(); }
+  // --- Data setters/getters ---
+  /**
+   * Sets available menu items used to populate item dropdowns.
+   * @param {Array} data
+   */
+  set menu(data) { this._menu = data || []; }
+  get menu() { return this._menu || []; }
 
   /**
-   * Main render method - builds the UI for combo group management
+   * Sets the product being edited. Ensures required structure exists.
+   * @param {Object} data
+   */
+  set product(data) {
+    this._product = data || {};
+    if (!Array.isArray(this._product.combo_item_groups)) {
+      this._product.combo_item_groups = [];
+    }
+  }
+  get product() {
+    if (!this._product || typeof this._product !== 'object') this._product = {};
+    if (!Array.isArray(this._product.combo_item_groups)) this._product.combo_item_groups = [];
+    return this._product;
+  }
+
+  // --- Lifecycle methods ---
+  constructor() {
+    super();
+    this._menu = [];
+    this._product = {};
+  }
+
+  /**
+   * Called when the element is added to the DOM.
+   * Renders the editor UI.
+   */
+  connectedCallback() {
+    this.render();
+  }
+
+  // --- Render methods ---
+  /**
+   * Renders the combo group editor UI and binds UI events.
    */
   render() {
-    const product = this._data;
-    const menu = this._menu || [];
-    if (!product) {
-      this.innerHTML = `<div>No product data</div>`;
-      return;
-    }
-    this.innerHTML = this.getHTML(product, menu);
+    this.innerHTML = this.getHTML();
 
-    // Bind event handlers for all interactive elements
-    // Group name input
+    // Bind group name input
     this.querySelectorAll('.combo-group-name').forEach(input => {
-      input.oninput = this.handleGroupNameInput.bind(this);
+      input.oninput = (e) => this.handleGroupNameInput(e);
     });
-    // Quantity input
-    this.querySelectorAll('.combo-quantity').forEach(input => {
-      input.oninput = this.handleGroupQuantityInput.bind(this);
+
+    // Bind group quantity input
+    this.querySelectorAll('.combo-group-qty').forEach(input => {
+      input.oninput = (e) => this.handleGroupQtyInput(e);
     });
-    // Remove group button
-    this.querySelectorAll('.remove-combo-group-btn').forEach(btn => {
-      btn.onclick = this.handleRemoveGroup.bind(this);
+
+    // Delete group buttons
+    this.querySelectorAll('.combo-group-remove-btn').forEach(btn => {
+      btn.onclick = (e) => this.handleRemoveGroup(e);
     });
-    // Add item button
+
+    // Move up group buttons
+    this.querySelectorAll('.move-up-group-btn').forEach(btn => {
+      btn.onclick = (e) => this.handleMoveUpGroup(e);
+    });
+
+    // Move down group buttons
+    this.querySelectorAll('.move-down-group-btn').forEach(btn => {
+      btn.onclick = (e) => this.handleMoveDownGroup(e);
+    });
+
+    // Add group button
+    const addGroupBtn = this.querySelector('.add-combo-group-btn');
+    if (addGroupBtn) addGroupBtn.onclick = (e) => this.handleAddGroup(e);
+
+    // Add item buttons
     this.querySelectorAll('.add-combo-item-btn').forEach(btn => {
-      btn.onclick = this.handleAddComboItem.bind(this);
+      btn.onclick = (e) => this.handleAddItem(e);
     });
-    // Remove item button
+
+    // Delete item buttons
     this.querySelectorAll('.remove-combo-item-btn').forEach(btn => {
-      btn.onclick = this.handleRemoveComboItem.bind(this);
+      btn.onclick = (e) => this.handleRemoveItem(e);
     });
-    // Item select dropdown
+
+    // Item select dropdowns
     this.querySelectorAll('.combo-item-select').forEach(sel => {
-      sel.onchange = this.handleComboItemSelectChange.bind(this);
+      sel.onchange = (e) => this.handleItemSelect(e);
     });
-    // Item price delta input
+
+    // Price delta inputs
     this.querySelectorAll('.combo-item-price-delta').forEach(input => {
-      input.oninput = this.handleComboItemPriceDeltaInput.bind(this);
+      input.oninput = (e) => this.handlePriceDeltaInput(e);
     });
-    // Add combo group button
-    const addComboGroupBtn = this.querySelector('#addComboGroupBtn');
-    if (addComboGroupBtn) addComboGroupBtn.onclick = this.handleAddComboGroup.bind(this);
   }
 
-
+  // --- Event handlers ---
   /**
-   * Handles input for group name changes
+   * Moves a combo group up in the list.
+   * @param {Event} e
    */
-  handleGroupNameInput(e) {
-    const product = this._data;
+  handleMoveUpGroup(e) {
     const idx = Number(e.target.dataset.groupIdx);
-    product.combo_item_groups[idx].group_name = e.target.value;
-    this.dispatchEvent(new CustomEvent('change', { detail: product }));
+    if (idx > 0) {
+      const arr = this.product.combo_item_groups;
+      [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
+      this.render();
+    }
   }
 
-
   /**
-   * Handles input for group quantity changes
+   * Moves a combo group down in the list.
+   * @param {Event} e
    */
-  handleGroupQuantityInput(e) {
-    const product = this._data;
+  handleMoveDownGroup(e) {
     const idx = Number(e.target.dataset.groupIdx);
-    product.combo_item_groups[idx].quantity = Number(e.target.value);
-    this.dispatchEvent(new CustomEvent('change', { detail: product }));
+    const arr = this.product.combo_item_groups;
+    if (idx < arr.length - 1) {
+      [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+      this.render();
+    }
   }
 
-
   /**
-   * Handles removal of a combo group
+   * Adds a new empty combo group.
+   * @param {Event} e
    */
-  handleRemoveGroup(e) {
-    const product = this._data;
-    const idx = Number(e.target.dataset.idx);
-    product.combo_item_groups.splice(idx, 1);
-    this.render();
-    this.dispatchEvent(new CustomEvent('change', { detail: product }));
-  }
-
-
-  /**
-   * Handles adding a new item to a combo group
-   */
-  handleAddComboItem(e) {
-    const product = this._data;
-    const menu = this._menu || [];
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    product.combo_item_groups[groupIdx].items.push({
-      item_id: menu[0]?.item_id || 0,
-      price_delta: 0
-    });
-    this.render();
-    this.dispatchEvent(new CustomEvent('change', { detail: product }));
-  }
-
-
-  /**
-   * Handles removal of an item from a combo group
-   */
-  handleRemoveComboItem(e) {
-    const product = this._data;
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    const itemIdx = Number(e.target.dataset.itemIdx);
-    product.combo_item_groups[groupIdx].items.splice(itemIdx, 1);
-    this.render();
-    this.dispatchEvent(new CustomEvent('change', { detail: product }));
-  }
-
-
-  /**
-   * Handles selection change for combo item dropdown
-   */
-  handleComboItemSelectChange(e) {
-    const product = this._data;
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    const itemIdx = Number(e.target.dataset.itemIdx);
-    product.combo_item_groups[groupIdx].items[itemIdx].item_id = Number(e.target.value);
-    this.dispatchEvent(new CustomEvent('change', { detail: product }));
-  }
-
-
-  /**
-   * Handles input for price delta changes on combo items
-   */
-  handleComboItemPriceDeltaInput(e) {
-    const product = this._data;
-    const groupIdx = Number(e.target.dataset.groupIdx);
-    const itemIdx = Number(e.target.dataset.itemIdx);
-    product.combo_item_groups[groupIdx].items[itemIdx].price_delta = Number(e.target.value);
-    this.dispatchEvent(new CustomEvent('change', { detail: product }));
-  }
-
-
-  /**
-   * Handles adding a new combo group
-   */
-  handleAddComboGroup() {
-    const product = this._data;
-    product.combo_item_groups = product.combo_item_groups || [];
-    product.combo_item_groups.push({
-      item_group_id: Date.now() + Math.floor(Math.random() * 1000),
+  handleAddGroup(e) {
+    this.product.combo_item_groups.push({
+      item_group_id: null,
       group_name: '',
       quantity: 1,
       items: []
     });
     this.render();
-    this.dispatchEvent(new CustomEvent('change', { detail: product }));
   }
 
+  /**
+   * Adds a new item row to a combo group.
+   * @param {Event} e
+   */
+  handleAddItem(e) {
+    const groupIdx = Number(e.target.dataset.groupIdx);
+    const firstMenuId = this.menu[0]?.item_id || 0;
+    this.product.combo_item_groups[groupIdx].items.push({
+      item_id: firstMenuId,
+      price_delta: 0
+    });
+    this.render();
+  }
 
   /**
-   * Generates the main HTML structure for the combo group editor
-   * @param {Object} product - The product data
-   * @param {Array} menu - The menu items available for selection
-   * @returns {string} The HTML string for the combo group editor
+   * Updates a group's name on input.
+   * @param {Event} e
    */
-  getHTML(product, menu) {
+  handleGroupNameInput(e) {
+    const idx = Number(e.target.dataset.groupIdx);
+    this.product.combo_item_groups[idx].group_name = e.target.value;
+  }
+
+  /**
+   * Updates a group's quantity on input.
+   * @param {Event} e
+   */
+  handleGroupQtyInput(e) {
+    const idx = Number(e.target.dataset.groupIdx);
+    this.product.combo_item_groups[idx].quantity = Number(e.target.value) || 1;
+  }
+
+  /**
+   * Removes a combo group.
+   * @param {Event} e
+   */
+  handleRemoveGroup(e) {
+    const idx = Number(e.target.dataset.groupIdx);
+    this.product.combo_item_groups.splice(idx, 1);
+    this.render();
+  }
+
+  /**
+   * Removes an item from a combo group.
+   * @param {Event} e
+   */
+  handleRemoveItem(e) {
+    const groupIdx = Number(e.target.dataset.groupIdx);
+    const itemIdx = Number(e.target.dataset.itemIdx);
+    this.product.combo_item_groups[groupIdx].items.splice(itemIdx, 1);
+    this.render();
+  }
+
+  /**
+   * Updates selected item id for a combo item row.
+   * @param {Event} e
+   */
+  handleItemSelect(e) {
+    const groupIdx = Number(e.target.dataset.groupIdx);
+    const itemIdx = Number(e.target.dataset.itemIdx);
+    this.product.combo_item_groups[groupIdx].items[itemIdx].item_id = Number(e.target.value);
+  }
+
+  /**
+   * Updates price delta for a combo item row.
+   * @param {Event} e
+   */
+  handlePriceDeltaInput(e) {
+    const groupIdx = Number(e.target.dataset.groupIdx);
+    const itemIdx = Number(e.target.dataset.itemIdx);
+    this.product.combo_item_groups[groupIdx].items[itemIdx].price_delta = Number(e.target.value) || 0;
+  }
+
+  // --- HTML generators ---
+  /**
+   * Returns the HTML for the combo group editor.
+   * @return {string}
+   */
+  getHTML() {
+    const comboGroups = this.product.combo_item_groups || [];
     return `
-      <div class="combo-section editor-block">
-        <h3>Combo Item Groups</h3>
-        ${product.combo_item_groups?.map((group, groupIdx) => this.getGroupEditorHTML(group, groupIdx, menu)).join('')}
-        <button type="button" id="addComboGroupBtn" class="btn-primary">Add Combo Group</button>
+      <div class="combo-group-editor">
+        <label><strong>Combo Groups</strong></label>
+        <div>
+          ${comboGroups.map((group, groupIdx) => this.getComboGroupHTML(group, groupIdx)).join('')}
+        </div>
+        <button type="button" class="add-combo-group-btn btn-primary" style="margin-top:8px;">Add Combo Group</button>
       </div>
     `;
   }
 
-
   /**
-   * Generates the HTML for a single combo group editor card
-   * @param {Object} group - The combo group data
-   * @param {number} groupIdx - The index of the group
-   * @param {Array} menu - The menu items available for selection
-   * @returns {string} The HTML string for the combo group card
+   * Returns the HTML for a single combo group card.
+   * @param {Object} group
+   * @param {number} groupIdx
+   * @return {string}
    */
-  getGroupEditorHTML(group, groupIdx, menu) {
+  getComboGroupHTML(group, groupIdx) {
+    const comboGroups = this.product.combo_item_groups || [];
     return `
-          <div class="combo-group editor-subblock" data-group-id="${group.item_group_id}">
-            <div class="combo-group-header">
-              <label>
-                Group Name:
-                <input type="text" class="combo-group-name" value="${group.group_name || ''}" data-group-idx="${groupIdx}">
-              </label>
-              <label>
-                Quantity:
-                <input type="number" class="combo-quantity" value="${group.quantity || 1}" data-group-idx="${groupIdx}">
-              </label>
-              <button type="button" class="remove-combo-group-btn btn-danger" data-idx="${groupIdx}">Remove Group</button>
-            </div>
-            <div class="combo-item-list">
-              <h4>Items</h4>
-              ${group.items.map((item, itemIdx) => this.getGroupItemHTML(item, itemIdx, groupIdx, menu)).join('')}
-              <button type="button" class="add-combo-item-btn btn-secondary" data-group-idx="${groupIdx}">Add Item</button>
-            </div>
+      <div class="combo-group-card">
+        <div class="combo-group-card-header">
+          <div style="flex:1;">
+            <label style="margin-left:12px;">
+              Group Name:
+              <input type="text" class="combo-group-name" data-group-idx="${groupIdx}" value="${group.group_name || ''}" placeholder="Group Name">
+            </label>
+            <label style="margin-left:12px;">
+              Quantity:
+              <input type="number" class="combo-group-qty" data-group-idx="${groupIdx}" value="${group.quantity || 1}" min="1" style="width:60px;">
+            </label>
           </div>
-        `;
+          <div class="combo-group-card-actions">
+            <button type="button" class="move-up-group-btn btn-secondary" data-group-idx="${groupIdx}" title="Move Up" ${groupIdx === 0 ? 'disabled' : ''}>▲</button>
+            <button type="button" class="move-down-group-btn btn-secondary" data-group-idx="${groupIdx}" title="Move Down" ${groupIdx === comboGroups.length - 1 ? 'disabled' : ''}>▼</button>
+            <button type="button" class="combo-group-remove-btn" data-group-idx="${groupIdx}" title="Remove Group">✕</button>
+          </div>
+        </div>
+        <div class="combo-group-card-body">
+          <div><strong>Items</strong></div>
+          ${Array.isArray(group.items) && group.items.length > 0
+            ? group.items.map((item, itemIdx) => this.getComboItemRowHTML(item, itemIdx, groupIdx)).join('')
+            : '<div style="color:#888;">No items. Please add.</div>'
+          }
+          <button type="button" class="add-combo-item-btn btn-secondary" data-group-idx="${groupIdx}" style="margin-top:4px;">Add Item</button>
+        </div>
+      </div>
+    `;
   }
 
-
   /**
-   * Generates the HTML for a single combo item row
-   * @param {Object} item - The combo item data
-   * @param {number} itemIdx - The index of the item
-   * @param {number} groupIdx - The index of the group
-   * @param {Array} menu - The menu items available for selection
-   * @returns {string} The HTML string for the combo item row
+   * Returns the HTML for a single combo item row.
+   * @param {Object} item
+   * @param {number} itemIdx
+   * @param {number} groupIdx
+   * @return {string}
    */
-  getGroupItemHTML(item, itemIdx, groupIdx, menu) {
+  getComboItemRowHTML(item, itemIdx, groupIdx) {
     return `
-          <div class="combo-item-row editor-row">
-            <select class="combo-item-select" data-group-idx="${groupIdx}" data-item-idx="${itemIdx}">
-              ${menu.map(menuItem =>
-                `<option value="${menuItem.item_id}" ${menuItem.item_id === item.item_id ? 'selected' : ''}>${menuItem.name}</option>`
-              ).join('')}
-            </select>
-            <span style="display:inline-flex;align-items:center;margin-left:8px;">
-              <span style="margin-right:2px;">$</span>
-              <input type="number" class="combo-item-price-delta" value="${item.price_delta || 0}" data-group-idx="${groupIdx}" data-item-idx="${itemIdx}" style="width:70px;" placeholder="Price Delta">
-            </span>
-            <!-- Remove item button with trashcan icon -->
-            <button type="button" class="remove-combo-item-btn btn-danger" data-group-idx="${groupIdx}" data-item-idx="${itemIdx}" title="Remove Item">
-              <!-- Trashcan icon for remove action -->
-              🗑️
-            </button>
-          </div>
-        `;
+      <div class="combo-item-row" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <select class="combo-item-select" data-group-idx="${groupIdx}" data-item-idx="${itemIdx}" style="flex:1;">
+          ${this.menu.map(menuItem =>
+            `<option value="${menuItem.item_id}" ${menuItem.item_id === (item.item_id || item) ? 'selected' : ''}>${menuItem.name}</option>`
+          ).join('')}
+        </select>
+        <input type="number" class="combo-item-price-delta" data-group-idx="${groupIdx}" data-item-idx="${itemIdx}" value="${item.price_delta || 0}" style="width:80px;" placeholder="Price Δ">
+        <button type="button" class="remove-combo-item-btn btn-danger" data-group-idx="${groupIdx}" data-item-idx="${itemIdx}" title="Remove Item">🗑️</button>
+      </div>
+    `;
   }
 }
+
 customElements.define('combo-group-editor', ComboGroupEditor);

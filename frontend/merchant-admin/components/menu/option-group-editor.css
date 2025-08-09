@@ -2,9 +2,58 @@
 
 /* ==========================================================================
    Option Group Editor Custom Styles
+   Matches OptionGroupSelector dropdown behavior/appearance
    ========================================================================== */
 
-/* === Option List Scroll Box === */
+/* --- Dropdown container --- */
+.option-dropdown {
+  position: relative; /* anchor for the floating content panel */
+}
+
+/* --- Dropdown button (keep consistent width) --- */
+.option-dropdown .custom-dropdown-btn {
+  min-width: 220px;
+}
+
+/* --- Floating dropdown content panel --- */
+.option-dropdown .custom-dropdown-content {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 1000;
+
+  /* Panel look */
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+
+  /* Spacing and size */
+  padding: 10px 8px;
+  min-width: 260px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* --- Option rows inside the dropdown --- */
+.option-dropdown .custom-dropdown-content label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px 0;
+  font-weight: 400;
+  color: #23272f;
+  white-space: nowrap; /* keep each row on one line */
+}
+
+.option-dropdown .custom-dropdown-content label:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Remove overly-broad old styles (keep scroll only on content panel) --- */
+/* If you previously relied on these styles for the wrapper, they are no longer needed.
+   The scroll box now lives on .custom-dropdown-content specifically. */
+/*
 .editor-sections > label > div {
   max-height: 160px;
   overflow-y: auto;
@@ -19,3 +68,4 @@
   font-weight: 400;
   color: #23272f;
 }
+*/

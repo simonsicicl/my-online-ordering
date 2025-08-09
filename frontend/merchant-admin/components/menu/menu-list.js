@@ -15,10 +15,14 @@ class MenuList extends HTMLElement {
   set menu(data) { this._menu = data || []; }
   set categories(data) { this._categories = data || []; }
   set tags(data) { this._tags = data || []; }
+  set option_groups(data) { this._option_groups = data || []; }
+  set option_list(data) { this._option_list = data || []; }
 
   get menu() { return this._menu || []; }
   get categories() { return this._categories || []; }
   get tags() { return this._tags || []; }
+  get option_groups() { return this._option_groups || []; }
+  get option_list() { return this._option_list || []; }
 
   // --- Lifecycle methods ---
   /**
@@ -117,8 +121,8 @@ class MenuList extends HTMLElement {
     modal.menu = this.menu;
     modal.categories = this.categories;
     modal.tags = this.tags;
-    if (this.option_groups) modal.option_groups = this.option_groups;
-    if (this.option_list) modal.option_list = this.option_list;
+    modal.option_groups = this.option_groups;
+    modal.option_list = this.option_list;
     modal.itemId = itemId;
     modal.addEventListener('save', e => {
       this.dispatchEvent(new CustomEvent('refresh'));

@@ -1,4 +1,9 @@
 // Modal-style Product Editor for merchant admin system
+// Uses a shared product object reference across MenuEditor, ComboGroupEditor, and OptionGroupSelector.
+// Child components mutate product in-place; no change events are required for data sync.
+
+import './combo-group-editor.js';
+import './option-group-selector.js';
 
 import {
   createMenuItemURL,
@@ -8,48 +13,89 @@ import {
 
 class MenuEditor extends HTMLElement {
   // --- Data setters/getters ---
+  /**
+   * Full menu list, used by combo editor to populate item dropdowns.
+   * @param {Array<Object>} data
+   */
   set menu(data) { this._menu = data || []; }
-  set categories(data) { this._categories = data || []; }
-  set tags(data) { this._tags = data || []; }
-  set option_groups(data) { this._option_groups = data || []; }
-  set option_list(data) { this._option_list = data || []; }
-  set product(data) { this._product = data || this.getNewProductTemplate(); }
-  set itemId(id) { this._itemId = id || "0"; }
-
   get menu() { return this._menu || []; }
+
+  /**
+   * Available categories for products.
+   * @param {Array<{category_id:number,name:string}>} data
+   */
+  set categories(data) { this._categories = data || []; }
   get categories() { return this._categories || []; }
+
+  /**
+   * Available tags for products.
+   * @param {Array<{tag_id:number,name:string,color:string}>} data
+   */
+  set tags(data) { this._tags = data || []; }
   get tags() { return this._tags || []; }
+
+  /**
+   * Option group definitions (group metadata).
+   * @param {Array<Object>} data
+   */
+  set option_groups(data) { this._option_groups = data || []; }
   get option_groups() { return this._option_groups || []; }
+
+  /**
+   * Flat option list used to display option names per group.
+   * @param {Array<Object>} data
+   */
+  set option_list(data) { this._option_list = data || []; }
   get option_list() { return this._option_list || []; }
+
+  /**
+   * The product being edited. Falls back to a new product template if not provided.
+   * @param {Object} data
+   */
+  set product(data) { this._product = data || this.getNewProductTemplate(); }
   get product() { return this._product || this.getNewProductTemplate(); }
+
+  /**
+   * Current item id (string) used to decide create vs update.
+   * Use "0" for new product.
+   * @param {string} id
+   */
+  set itemId(id) { this._itemId = id || "0"; }
   get itemId() { return this._itemId || "0"; }
 
   // --- Lifecycle methods ---
   /**
    * Called when the element is added to the DOM.
-   * Renders modal and loads product data for editing or new product.
+   * - Renders modal shell
+   * - Loads product data (clone existing or create new template)
+   * - Renders the editor form
    */
   async connectedCallback() {
     this.renderModal();
-    // Load product data for editing, or use template for new product
-    this._itemId = this.getAttribute('id') || this._itemId || "0";
+
+    // Load product for edit or create new
+    this._itemId = this._itemId || "0";
     if (this._itemId !== "0") {
-      // Deep clone to avoid mutating original menu data
-      this.product = JSON.parse(JSON.stringify(this.menu.find(item => item.item_id === Number(this._itemId))));
+      // Deep clone to avoid mutating original menu collection while editing
+      this.product = JSON.parse(JSON.stringify(
+        this.menu.find(item => item.item_id === Number(this._itemId))
+      ));
     } else {
       this.product = this.getNewProductTemplate();
     }
-    // If product not found, show error
+
+    // Handle missing product gracefully
     if (!this.product) {
       this.querySelector('.modal-content').innerHTML = `<h2>Product Editor</h2><p>Product not found.</p>`;
       return;
     }
+
     this.renderEditor();
   }
 
+  // --- Render methods ---
   /**
-   * Renders modal backdrop and content container.
-   * Binds backdrop click to close modal.
+   * Renders modal backdrop and content container and binds backdrop close.
    */
   renderModal() {
     this.innerHTML = this.getHTML();
@@ -58,23 +104,30 @@ class MenuEditor extends HTMLElement {
 
   /**
    * Renders the product editor form and binds all UI events.
+   * - Binds header/close/cancel
+   * - Updates image preview on input
+   * - Binds form submit/delete
+   * - Sets up tag dropdown
+   * - Mounts either ComboGroupEditor or OptionGroupSelector with shared product reference
    */
   renderEditor() {
     const product = this.product;
     const isNew = product.item_id === 0;
+
+    // Inject form HTML
     this.querySelector('.modal-content').innerHTML = this.getEditorHTML(isNew, product);
 
-    // Bind close button event
+    // Close (X) button
     this.querySelector('#closeBtn').onclick = () => this.close();
 
-    // Bind cancel button event
+    // Cancel button
     const cancelBtn = this.querySelector('#cancelBtn');
     if (cancelBtn) cancelBtn.onclick = (e) => {
       e.preventDefault();
       this.close();
     };
 
-    // Bind image preview update on input
+    // Image preview live update
     const imgInput = this.querySelector('#image_url');
     if (imgInput) {
       imgInput.oninput = () => {
@@ -82,18 +135,51 @@ class MenuEditor extends HTMLElement {
       };
     }
 
-    // Bind form submit event
+    // Form submit
     const form = this.querySelector('#editorForm');
     if (form) form.onsubmit = (e) => this.saveEventHandler(e, product);
 
-    // Bind delete button event (only for existing products)
+    // Delete (only for existing products)
     const deleteBtn = this.querySelector('#deleteBtn');
     if (deleteBtn) deleteBtn.onclick = (e) => this.deleteEventHandler(e, product);
+
+    // Tag dropdown behavior
+    const tagDropdown = this.querySelector('.tag-dropdown');
+    if (tagDropdown) {
+      const btn = tagDropdown.querySelector('.tag-dropdown-btn');
+      const content = tagDropdown.querySelector('.tag-dropdown-content');
+      btn.onclick = (e) => this.handleTagDropdownButtonClick(e);
+      content.onclick = e => e.stopPropagation(); // keep dropdown open while interacting inside
+    }
+
+    // Detail section: mount option or combo editor
+    const detailSection = this.querySelector('#editor-detail-section');
+    if (detailSection) {
+      detailSection.innerHTML = '';
+      if (product.is_combo) {
+        // Combo editor uses menu list and the same product reference
+        const comboEditor = document.createElement('combo-group-editor');
+        comboEditor.menu = this.menu;
+        comboEditor.product = product;
+        detailSection.appendChild(comboEditor);
+      } else {
+        // Option selector uses option groups/list and the same product reference
+        const optionSelector = document.createElement('option-group-selector');
+        optionSelector.optionGroups = this.option_groups;
+        optionSelector.optionList = this.option_list;
+        optionSelector.product = product;
+        detailSection.appendChild(optionSelector);
+      }
+    }
   }
 
+  // --- Event handlers ---
   /**
-   * Handles product deletion, sends DELETE request to server.
-   * Dispatches 'delete' event on success.
+   * Handles product deletion:
+   * - Confirms with user
+   * - Sends DELETE to server
+   * - Emits 'delete' event with item_id
+   * - Closes the modal
    * @param {Event} e
    * @param {Object} product
    */
@@ -101,40 +187,69 @@ class MenuEditor extends HTMLElement {
     e.preventDefault();
     if (!product.item_id) return;
     if (!confirm('Are you sure you want to delete this product?')) return;
+
     try {
       const res = await fetch(deleteMenuItemURL(product.item_id), {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Failed to delete product');
       const result = await res.json();
-      console.log('Product deleted successfully!', result); // TEST
+      console.log('Product deleted successfully!', result); // debug/log
     } catch (err) {
       alert('Failed to delete product!');
       console.error('Error deleting product:', err);
     }
+
+    // Notify parent even if server failed; adjust if you prefer stricter behavior
     this.dispatchEvent(new CustomEvent('delete', { detail: product.item_id }));
     this.close();
   }
 
-  // --- Event handlers ---
   /**
-   * Handles form submission, prepares data, and sends to server.
-   * Dispatches 'save' event on success.
+   * Handles form submission:
+   * - Merges form data into product clone
+   * - Normalizes booleans and numbers
+   * - Preserves is_combo when the checkbox is disabled (existing products)
+   * - Sends to server (POST for create, PUT for update)
+   * - Emits 'save' event with response payload
+   * - Closes the modal
    * @param {Event} e
    * @param {Object} product
    */
   async saveEventHandler(e, product) {
     e.preventDefault();
+
     const formData = new FormData(e.target);
-    // Merge form data into product object
-    const updatedProduct = { ...product, ...Object.fromEntries(formData) };
+    const dto = Object.fromEntries(formData);
+
+    // Merge form data into a product-shaped object (do not mutate the original directly)
+    const updatedProduct = { ...product, ...dto };
+
+    // Normalize booleans and numbers
+    // is_available: present only when checked; treat missing as false
     updatedProduct.is_available = !!formData.get('is_available');
-    updatedProduct.is_combo = !!formData.get('is_combo');
+
+    // is_combo: checkbox is disabled for existing products; when disabled it won't be in formData
+    updatedProduct.is_combo = formData.has('is_combo')
+      ? !!formData.get('is_combo')
+      : product.is_combo;
+
     updatedProduct.price = Number(formData.get('price')) || 0;
     updatedProduct.category_id = Number(formData.get('category_id')) || 0;
-    updatedProduct.tags = Array.from(this.querySelectorAll('.tag-list input[type="checkbox"]:checked')).map(cb => Number(cb.value));
 
-    // Determine API endpoint and HTTP method
+    // Tags: read from visible tag checkbox list
+    updatedProduct.tags = Array.from(
+      this.querySelectorAll('.tag-list input[type="checkbox"]:checked')
+    ).map(cb => Number(cb.value));
+
+    // Option/Combo groups: rely on child editors mutating the shared product reference
+    if (product.is_combo) {
+      updatedProduct.combo_item_groups = product.combo_item_groups || [];
+    } else {
+      updatedProduct.option_groups = product.option_groups || [];
+    }
+
+    // Decide endpoint/method
     let url, method, saved;
     if (this.itemId === "0" || updatedProduct.item_id === 0) {
       url = createMenuItemURL();
@@ -144,7 +259,7 @@ class MenuEditor extends HTMLElement {
       method = 'PUT';
     }
 
-    // Send data to server and handle response
+    // Send to server
     try {
       const res = await fetch(url, {
         method,
@@ -153,14 +268,31 @@ class MenuEditor extends HTMLElement {
       });
       if (!res.ok) throw new Error('Failed to save product');
       saved = await res.json();
-      console.log(`Product ${(this.itemId === "0" || updatedProduct.item_id === 0) ? 'created' : 'updated'} successfully!`, saved); // TEST
+      console.log(`Product ${(this.itemId === "0" || updatedProduct.item_id === 0) ? 'created' : 'updated'} successfully!`, saved); // debug/log
     } catch (err) {
       alert('Failed to save product!');
       console.error('Error saving product:', err);
     }
-      // Dispatch save event with saved product data
+
+    // Emit save event and close
     this.dispatchEvent(new CustomEvent('save', { detail: saved }));
     this.close();
+  }
+
+  /**
+   * Toggles the tag dropdown visibility; clicking inside should not close it.
+   * @param {Event} e
+   */
+  handleTagDropdownButtonClick(e) {
+    e.stopPropagation();
+    const content = this.querySelector('.tag-dropdown-content');
+
+    // Simple toggle; global outside-click handler can be added if desired
+    if (content.style.display === 'block') {
+      content.style.display = 'none';
+    } else {
+      content.style.display = 'block';
+    }
   }
 
   // --- Utility methods ---
@@ -186,7 +318,7 @@ class MenuEditor extends HTMLElement {
   }
 
   /**
-   * Formats a date string for display.
+   * Formats a date string for display or returns '-' if invalid/empty.
    * @param {string} dateStr
    * @return {string}
    */
@@ -197,7 +329,7 @@ class MenuEditor extends HTMLElement {
   }
 
   /**
-   * Closes the modal and dispatches a 'close' event.
+   * Closes the modal and emits a 'close' event.
    */
   close() {
     this.remove();
@@ -206,7 +338,7 @@ class MenuEditor extends HTMLElement {
 
   // --- HTML generators ---
   /**
-   * Returns modal HTML structure.
+   * Returns modal container HTML.
    * @return {string}
    */
   getHTML() {
@@ -218,8 +350,8 @@ class MenuEditor extends HTMLElement {
 
   /**
    * Returns the editor form HTML.
-   * @param {boolean} isNew
-   * @param {Object} product
+   * @param {boolean} isNew Whether this is a new product (no item_id yet)
+   * @param {Object} product Product data to edit
    * @return {string}
    */
   getEditorHTML(isNew, product) {
@@ -280,16 +412,21 @@ class MenuEditor extends HTMLElement {
               </label>
               <label class="tag-list">
                 Tags:<br>
-                ${this.tags.map(tag =>
-                  `<label>
-                    <input type="checkbox" value="${tag.tag_id}" ${product.tags.includes(tag.tag_id) ? 'checked' : ''}>
-                    <span class="tag-badge" style="background:${tag.color};">${tag.name}</span>
-                  </label>`
-                ).join('')}
+                <div class="custom-dropdown tag-dropdown">
+                  <button class="custom-dropdown-btn tag-dropdown-btn" type="button">Select Tags</button>
+                  <div class="custom-dropdown-content tag-dropdown-content" style="display:none;">
+                    ${this.tags.map(tag =>
+                      `<label>
+                        <input type="checkbox" value="${tag.tag_id}" ${product.tags.includes(tag.tag_id) ? 'checked' : ''}>
+                        <span class="tag-badge" style="background:${tag.color};">${tag.name}</span>
+                      </label>`
+                    ).join('')}
+                  </div>
+                </div>
               </label>
             </section>
             <section class="editor-section">
-              <!-- Option group/combo group editor can be expanded here -->
+              <!-- Option group / combo group editor mounts here -->
               <div id="editor-detail-section"></div>
             </section>
           </div>
@@ -305,3 +442,4 @@ class MenuEditor extends HTMLElement {
 }
 
 customElements.define('menu-editor', MenuEditor);
+
