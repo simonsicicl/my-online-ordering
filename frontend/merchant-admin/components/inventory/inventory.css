@@ -1,0 +1,189 @@
+/* Inventory Components Styles */
+
+/* Root container */
+.inventory-management-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* Header: title + tabs + mobile select */
+.inventory-management-root .menu-management-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inventory-management-root .menu-management-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Desktop tabs - styled consistent with menu-management.css (scoped) */
+.inventory-management-root .menu-management-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 0;
+  background: #f3f4f6;
+  border-radius: 6px 6px 0 0;
+  padding: 0 0 0 2px;
+  min-height: 36px;
+}
+
+.inventory-management-root .menu-management-tabs button {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 500;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-size: 1em;
+  flex: 1 1 0;
+  transition: background 0.2s, color 0.2s;
+  margin: 0;
+}
+
+.inventory-management-root .menu-management-tabs button.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* Mobile select bar */
+.inventory-management-root .menu-management-selectbar {
+  display: none;
+}
+
+.inventory-management-root .menu-management-selectbar select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #2563eb;
+  font-size: 1.08em;
+  font-weight: 500;
+}
+
+/* Main content area aligned with menu management */
+.inventory-management-root .inventory-tab-content {
+  border-radius: 0 0 6px 6px;
+  padding: 24px 18px 32px 18px;
+  min-height: 0;
+  width: 100%;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: transparent; /* was #fff, make seamless with outside */
+}
+
+/* Table styles */
+.inventory-management-root .table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.inventory-management-root .simple-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: #fff;
+}
+
+.inventory-management-root .simple-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f3f4f6;
+  color: #111827;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #e5e7eb;
+  padding: 10px;
+}
+
+.inventory-management-root .simple-table tbody td {
+  border-bottom: 1px solid #f1f5f9;
+  color: #374151;
+  padding: 10px;
+  vertical-align: top;
+}
+
+.inventory-management-root .simple-table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+/* Status badges to match menu list labels */
+.inventory-management-root .status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.97em;
+  font-weight: 500;
+}
+.inventory-management-root .status-active {
+  color: #22c55e;
+  background: #dcfce7;
+}
+.inventory-management-root .status-inactive {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+/* Utilities */
+.inventory-management-root .text-right { text-align: right; }
+
+/* Section titles within content */
+.inventory-management-root .inventory-tab-content h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #111827;
+}
+
+/* Empty state paragraph */
+.inventory-management-root .inventory-tab-content p {
+  color: #6b7280;
+  margin: 8px 0 0 0;
+}
+
+/* Responsive: show select on small screens */
+@media (max-width: 768px) {
+  .inventory-management-root .menu-management-tabs { display: none; }
+  .inventory-management-root .menu-management-selectbar { display: block; background: #f3f4f6; padding: 6px 0; border-radius: 6px 6px 0 0; }
+  .inventory-management-root .inventory-tab-content { padding: 12px; }
+
+  /* Convert table to card-like layout */
+  .inventory-management-root .simple-table,
+  .inventory-management-root .simple-table thead,
+  .inventory-management-root .simple-table tbody,
+  .inventory-management-root .simple-table th,
+  .inventory-management-root .simple-table td,
+  .inventory-management-root .simple-table tr {
+    display: block;
+  }
+  .inventory-management-root .simple-table thead { display: none; }
+  .inventory-management-root .simple-table tr {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    margin-bottom: 12px;
+    padding: 8px 10px;
+  }
+  .inventory-management-root .simple-table td {
+    border: none;
+    padding: 6px 0;
+  }
+  .inventory-management-root .simple-table td::before {
+    content: attr(data-label) ": ";
+    font-weight: 600;
+    color: #6b7280;
+    margin-right: 6px;
+  }
+}
