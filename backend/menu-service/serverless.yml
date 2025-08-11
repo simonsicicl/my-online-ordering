@@ -181,3 +181,27 @@ functions:
           path: /option-list/{option_id}
           method: delete
           cors: true
+  # 取得單一品項的配方（BOM）
+  getItemRecipe:
+    handler: handler.get_item_recipe
+    events:
+      - http:
+          path: /menu/{item_id}/recipe
+          method: get
+          cors: true
+  # 設定/更新單一品項的配方（BOM）
+  upsertItemRecipe:
+    handler: handler.upsert_item_recipe
+    events:
+      - http:
+          path: /menu/{item_id}/recipe
+          method: put
+          cors: true
+  # 列出所有品項的配方（後台管理/對齊 Inventory）
+  listRecipes:
+    handler: handler.list_recipes
+    events:
+      - http:
+          path: /menu/recipes
+          method: get
+          cors: true
