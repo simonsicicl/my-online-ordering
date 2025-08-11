@@ -63,7 +63,7 @@ MENU = {
             ]
         }
     ],
-    "menu": [
+    "items": [
         {
             "item_id": 1001,
             "name": "珍珠奶茶",
