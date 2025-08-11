@@ -1,0 +1,168 @@
+service: inventory-service
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: ap-northeast-3
+  environment:
+    MENU_SERVICE_BASE_URL: ${env:MENU_SERVICE_BASE_URL}
+
+functions:
+  # Materials（原物料）
+  listMaterials:
+    handler: handler.list_materials
+    events:
+      - http:
+          path: /inventory/materials
+          method: get
+          cors: true
+  getMaterial:
+    handler: handler.get_material
+    events:
+      - http:
+          path: /inventory/materials/{material_id}
+          method: get
+          cors: true
+  createMaterial:
+    handler: handler.create_material
+    events:
+      - http:
+          path: /inventory/materials
+          method: post
+          cors: true
+  updateMaterial:
+    handler: handler.update_material
+    events:
+      - http:
+          path: /inventory/materials/{material_id}
+          method: put
+          cors: true
+  deleteMaterial:
+    handler: handler.delete_material
+    events:
+      - http:
+          path: /inventory/materials/{material_id}
+          method: delete
+          cors: true
+
+  # Movements（庫存異動：進貨、扣料、報廢、調整、退貨…）
+  listMovements:
+    handler: handler.list_movements
+    events:
+      - http:
+          path: /inventory/movements
+          method: get
+          cors: true
+  getMovement:
+    handler: handler.get_movement
+    events:
+      - http:
+          path: /inventory/movements/{movement_id}
+          method: get
+          cors: true
+  createMovement:
+    handler: handler.create_movement
+    events:
+      - http:
+          path: /inventory/movements
+          method: post
+          cors: true
+
+  # Purchase Orders（採購單）
+  listPurchaseOrders:
+    handler: handler.list_purchase_orders
+    events:
+      - http:
+          path: /inventory/purchase-orders
+          method: get
+          cors: true
+  getPurchaseOrder:
+    handler: handler.get_purchase_order
+    events:
+      - http:
+          path: /inventory/purchase-orders/{purchase_id}
+          method: get
+          cors: true
+  createPurchaseOrder:
+    handler: handler.create_purchase_order
+    events:
+      - http:
+          path: /inventory/purchase-orders
+          method: post
+          cors: true
+  updatePurchaseOrder:
+    handler: handler.update_purchase_order
+    events:
+      - http:
+          path: /inventory/purchase-orders/{purchase_id}
+          method: put
+          cors: true
+  receivePurchaseOrder:
+    handler: handler.receive_purchase_order
+    events:
+      - http:
+          path: /inventory/purchase-orders/{purchase_id}/receive
+          method: post
+          cors: true
+
+  # Suppliers（供應商，可選）
+  listSuppliers:
+    handler: handler.list_suppliers
+    events:
+      - http:
+          path: /inventory/suppliers
+          method: get
+          cors: true
+  getSupplier:
+    handler: handler.get_supplier
+    events:
+      - http:
+          path: /inventory/suppliers/{supplier_id}
+          method: get
+          cors: true
+  createSupplier:
+    handler: handler.create_supplier
+    events:
+      - http:
+          path: /inventory/suppliers
+          method: post
+          cors: true
+  updateSupplier:
+    handler: handler.update_supplier
+    events:
+      - http:
+          path: /inventory/suppliers/{supplier_id}
+          method: put
+          cors: true
+  deleteSupplier:
+    handler: handler.delete_supplier
+    events:
+      - http:
+          path: /inventory/suppliers/{supplier_id}
+          method: delete
+          cors: true
+
+  # Alerts 與 Summary
+  listAlerts:
+    handler: handler.list_alerts
+    events:
+      - http:
+          path: /inventory/alerts
+          method: get
+          cors: true
+  getSummary:
+    handler: handler.get_summary
+    events:
+      - http:
+          path: /inventory/summary
+          method: get
+          cors: true
+
+  # 扣料（供 order-service 或 admin 模擬用；正式上線可改用事件驅動）
+  consumeByOrder:
+    handler: handler.consume_by_order
+    events:
+      - http:
+          path: /inventory/consume
+          method: post
+          cors: true
