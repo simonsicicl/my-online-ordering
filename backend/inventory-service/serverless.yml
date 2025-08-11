@@ -5,7 +5,7 @@ provider:
   runtime: python3.11
   region: ap-northeast-3
   environment:
-    MENU_SERVICE_BASE_URL: ${env:MENU_SERVICE_BASE_URL}
+    MENU_SERVICE_BASE_URL: https://ncsmt66i1f.execute-api.ap-northeast-3.amazonaws.com/prod
 
 functions:
   # Materials（原物料）
