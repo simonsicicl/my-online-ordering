@@ -40,7 +40,7 @@ MENU = {
             "option_ids": [301, 302, 303]
         }
     ],
-    "optionList": [
+    "option_list": [
         {"option_id": 301, "option_name": "正常糖", "price_delta": 0, "is_active": True},
         {"option_id": 302, "option_name": "半糖", "price_delta": 0, "is_active": True},
         {"option_id": 303, "option_name": "無糖", "price_delta": 0, "is_active": True},
