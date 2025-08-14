@@ -1,46 +1,146 @@
 // Inventory Management (ERP) container component for merchant admin system
-// Hosts tabs for: Inventory List, Purchase Orders, Movements, Stock Alerts.
-// Loads example data and passes it to child components.
+// Hosts tabs for: Material List, Purchase Orders, Movements, Stock Alerts.
+// Loads data from API and passes it to child components.
 
-import { inventoryDataExample } from '../../example-data.js';
-import './inventory-list.js';
+import * as api from '../../../api.js';
+import './material-list.js';
 import './purchase-list.js';
 import './movements-list.js';
 import './stock-alert.js';
+import './supplier-list.js';
 
 class InventoryManagement extends HTMLElement {
   constructor() {
     super();
     this._data = null;
+    this._materials = [];
+    this._movements = [];
+    this._purchase_orders = [];
+    this._suppliers = [];
     this._lastIsMobile = null;
-    // Use internal state for tab selection (no hash routing)
-    this._currentTab = 'list';
+    this._activeTab = 'list';
+    this._loading = false;
   }
+
+  // --- Getters and Setters ---
+  set materials(data) { this._materials = data || []; }
+  get materials() { return this._materials || []; }
+
+  set movements(data) { this._movements = data || []; }
+  get movements() { return this._movements || []; }
+
+  set purchase_orders(data) { this._purchase_orders = data || []; }
+  get purchase_orders() { return this._purchase_orders || []; }
+
+  set suppliers(data) { this._suppliers = data || []; }
+  get suppliers() { return this._suppliers || []; }
 
   // --- Lifecycle methods ---
   async connectedCallback() {
-    // Load data (using example data for now; replace with API calls later)
-    this._data = inventoryDataExample;
+    // Load data from API
+    this._loading = true;
+    this.render();
+    await this.fetchAllData();
+    this._loading = false;
 
     // Initial render
     this.render();
     this.renderTabContent();
 
-    // Handle layout changes only (no hashchange listener)
     this._lastIsMobile = window.innerWidth <= 768;
-    window.addEventListener('resize', this._onResize = () => this.handleResize());
+
+    // Bind and register event handlers (ensure correct `this` and removal later)
+    this._onResize = this.handleResize.bind(this);
+    this._onRefresh = this.handleRefresh.bind(this);
+    window.addEventListener('resize', this._onResize);
+    window.addEventListener('inventory:refresh', this._onRefresh);
   }
 
   disconnectedCallback() {
-    window.removeEventListener('resize', this._onResize);
+    // Remove using the same bound references
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
+    if (this._onRefresh) window.removeEventListener('inventory:refresh', this._onRefresh);
+  }
+
+  // --- Data helpers ---
+  normalizeItems(json) {
+    if (!json) return [];
+    if (Array.isArray(json)) return json;
+    if (json.items && Array.isArray(json.items)) return json.items;
+    if (json.data && Array.isArray(json.data.items)) return json.data.items;
+    return [];
+  }
+
+  async fetchMaterials(params) {
+    const res = await fetch(api.getMaterialsURL(params));
+    if (!res.ok) throw new Error('materials fetch failed');
+    const json = await res.json();
+    return this.normalizeItems(json);
+  }
+
+  async fetchMovements(params) {
+    const res = await fetch(api.getMovementsURL(params));
+    if (!res.ok) throw new Error('movements fetch failed');
+    const json = await res.json();
+    return this.normalizeItems(json);
+  }
+
+  async fetchPurchaseOrders(params) {
+    const res = await fetch(api.getPurchaseOrdersURL(params));
+    if (!res.ok) throw new Error('purchase orders fetch failed');
+    const json = await res.json();
+    return this.normalizeItems(json);
+  }
+
+  async fetchSuppliers(params) {
+    const res = await fetch(api.getSuppliersURL(params));
+    if (!res.ok) throw new Error('suppliers fetch failed');
+    const json = await res.json();
+    return this.normalizeItems(json);
+  }
+
+  async fetchAllData() {
+    console.log('Fetching inventory data...');
+    try {
+      const [materials, movements, purchase_orders, suppliers] = await Promise.all([
+        this.fetchMaterials(),
+        this.fetchMovements({ page_size: 200 }),
+        this.fetchPurchaseOrders({ page_size: 200 }),
+        this.fetchSuppliers({ page_size: 200 })
+      ]);
+      this.materials = materials;
+      this.movements = movements;
+      this.purchase_orders = purchase_orders;
+      this.suppliers = suppliers;
+    } catch (e) {
+      console.error('Failed to load all inventory data:', e);
+    }
   }
 
   // --- Render methods ---
   render() {
+    if (this._loading && !this.innerHTML) {
+      this.innerHTML = this.getLoadingHTML();
+      return;
+    }
+
     this.innerHTML = this.getHTML();
+  }
+
+  renderTabContent() {
+    this.querySelector('.management-root').innerHTML = this.getRootHTML();
+
+    // Render selected sub component
+    this.querySelectorAll('material-list, purchase-list, movements-list, stock-alert, supplier-list').forEach(el => {
+      if (el.materials) el.materials = this.materials;
+      if (el.movements) el.movements = this.movements;
+      if (el.purchase_orders) el.purchase_orders = this.purchase_orders;
+      if (el.suppliers) el.suppliers = this.suppliers;
+      el.renderTable();
+    });
 
     // Bind tab buttons (desktop)
-    this.querySelectorAll('.menu-management-tabs button[data-tab]').forEach(btn => {
+    this.querySelectorAll('.management-tabs button[data-tab]').forEach(btn => {
       btn.onclick = () => this.switchTab(btn.dataset.tab);
     });
 
@@ -49,46 +149,7 @@ class InventoryManagement extends HTMLElement {
     if (select) select.onchange = (e) => this.switchTab(e.target.value);
 
     // Reflect active tab on fresh markup
-    this.updateActiveTab(this._currentTab);
-  }
-
-  renderTabContent() {
-    const container = this.querySelector('.inventory-tab-content');
-    if (!container) return;
-
-    // Determine current tab from internal state
-    const sub = this._currentTab || 'list';
-
-    // Render selected sub component
-    let el;
-    switch (sub) {
-      case 'purchase':
-        el = document.createElement('purchase-list');
-        el.purchase_orders = this._data?.purchase_order || [];
-        el.purchase_items = this._data?.purchase_order_item || [];
-        break;
-      case 'movements':
-        el = document.createElement('movements-list');
-        el.movements = this._data?.inventory_movement || [];
-        el.materials = this._data?.material || [];
-        break;
-      case 'alerts':
-        el = document.createElement('stock-alert');
-        el.materials = this._data?.material || [];
-        break; // prevent fall-through
-      case 'list':
-      default:
-        el = document.createElement('inventory-list');
-        el.materials = this._data?.material || [];
-        break;
-    }
-
-    // Update active tab UI
-    this.updateActiveTab(sub);
-
-    // Mount
-    container.innerHTML = '';
-    container.appendChild(el);
+    this.updateActiveTab(this._activeTab);
   }
 
   // --- Event handlers ---
@@ -101,18 +162,32 @@ class InventoryManagement extends HTMLElement {
     }
   }
 
+  async handleRefresh() {
+    try {
+      this._loading = true;
+      this.renderTabContent();
+      await this.fetchAllData();
+    } catch (e) {
+      console.error('Inventory refresh failed', e);
+    } finally {
+      this._loading = false;
+      this.renderTabContent();
+    }
+  }
+
   // --- Tab helpers (no router) ---
   switchTab(sub) {
     if (!sub) return;
-    if (this._currentTab === sub) return;
-    this._currentTab = sub;
+    if (this._activeTab === sub) return;
+    this._activeTab = sub;
+
     this.updateActiveTab(sub);
     this.renderTabContent();
   }
 
   updateActiveTab(sub) {
     // Desktop buttons
-    this.querySelectorAll('.menu-management-tabs button[data-tab]').forEach(btn => {
+    this.querySelectorAll('.management-tabs button[data-tab]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === sub);
     });
     // Mobile select
@@ -123,24 +198,70 @@ class InventoryManagement extends HTMLElement {
   // --- HTML generators ---
   getHTML() {
     return `
-      <link rel="stylesheet" href="./components/inventory/inventory.css" />
-      <div class="inventory-management-root">
-        <div class="menu-management-tabs">
-          <button type="button" data-tab="list">Inventory List</button>
-          <button type="button" data-tab="purchase">Purchase Orders</button>
-          <button type="button" data-tab="movements">Movements</button>
-          <button type="button" data-tab="alerts">Stock Alerts</button>
-        </div>
-        <div class="menu-management-selectbar">
-          <select id="inventoryTabSelect">
-            <option value="list">Inventory List</option>
-            <option value="purchase">Purchase Orders</option>
-            <option value="movements">Movements</option>
-            <option value="alerts">Stock Alerts</option>
-          </select>
-        </div>
-        <div class="inventory-tab-content"></div>
+      <link rel="stylesheet" href="./components/inventory/inventory-management.css" />
+      <link rel="stylesheet" href="./components/inventory/list-base.css" />
+      <link rel="stylesheet" href="./components/inventory/editor-base.css" />
+      <link rel="stylesheet" href="./components/inventory/material-list.css" />
+      <div class="management-root">
+        ${this.getRootHTML()}
       </div>
+    `;
+  }
+
+  getRootHTML() {
+    return `
+      ${window.innerWidth <= 768 ? 
+      this.getMobileTabsHTML() : 
+      this.getDesktopTabsHTML()}
+      <div class="management-content">${this.getTabContentHTML()}</div>
+    `;
+  }
+
+  getDesktopTabsHTML() {
+    return `
+      <div class="management-tabs">
+        <button type="button" data-tab="list">Material List</button>
+        <button type="button" data-tab="purchase">Purchase Orders</button>
+        <button type="button" data-tab="movements">Movements</button>
+        <button type="button" data-tab="alerts">Stock Alerts</button>
+        <button type="button" data-tab="suppliers">Suppliers</button>
+      </div>
+    `;
+  }
+
+  getMobileTabsHTML() {
+    return `
+      <div class="management-selectbar">
+        <select id="inventoryTabSelect">
+          <option value="list">Material List</option>
+          <option value="purchase">Purchase Orders</option>
+          <option value="movements">Movements</option>
+          <option value="alerts">Stock Alerts</option>
+          <option value="suppliers">Suppliers</option>
+        </select>
+      </div>
+    `;
+  }
+
+  getLoadingHTML() {
+    return `
+      <div class="management-root">
+        <div class="management-content">
+          <p>Loading inventory…</p>
+        </div>
+      </div>
+    `;
+  }
+
+  getTabContentHTML() {
+    return `
+      ${this._loading ? '<div>Loading...</div>' : `
+        ${this._activeTab === 'list' ? '<material-list></material-list>' : ''}
+        ${this._activeTab === 'purchase' ? '<purchase-list></purchase-list>' : ''}
+        ${this._activeTab === 'movements' ? '<movements-list></movements-list>' : ''}
+        ${this._activeTab === 'alerts' ? '<stock-alert></stock-alert>' : ''}
+        ${this._activeTab === 'suppliers' ? '<supplier-list></supplier-list>' : ''}
+      `}
     `;
   }
 }

@@ -10,22 +10,101 @@
   min-width: 0;
 }
 
-/* Header: title + tabs + mobile select */
-.inventory-management-root .menu-management-header {
+/* ================= Editor/Modal Base (mirrors menu editor-base.css, scoped here) ================= */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.25);
+  z-index: 19999; /* raised to ensure on top of app shell */
+}
+.modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  z-index: 20000; /* raised above backdrop and other UI */
+}
+@media (max-width: 768px) {
+  .modal-content { max-width: 96vw; width: 96vw; }
+}
+.editor-container {
+  margin: 0 auto;
+  padding: 32px 24px 24px 24px;
+  max-width: 480px;
+}
+.editor-header {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #e5e7eb;
 }
-
-.inventory-management-root .menu-management-header h2 {
-  margin: 0;
-  font-size: 20px;
+.editor-header h3, .editor-header h2 {
+  font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  margin: 0;
 }
+/* Form elements */
+.editor-container label {
+  font-size: 0.95rem;
+  color: #374151;
+}
+.editor-container input[type="text"],
+.editor-container input[type="number"],
+.editor-container input[type="email"],
+.editor-container textarea,
+.editor-container select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #111827;
+  box-sizing: border-box;
+}
+.editor-container input[type="text"]:focus,
+.editor-container input[type="number"]:focus,
+.editor-container input[type="email"]:focus,
+.editor-container textarea:focus,
+.editor-container select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.editor-container input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+/* Buttons */
+.editor-container .saveBtn,
+.editor-container .cancelBtn,
+.editor-container .deleteBtn,
+.editor-container .receiveBtn,
+.editor-container .addItemBtn,
+.editor-container .add-catalog-row {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.editor-container .saveBtn { background: #2563eb; color: #fff; }
+.editor-container .saveBtn:hover { background: #1d4ed8; }
+.editor-container .cancelBtn { background: #f3f4f6; color: #111827; }
+.editor-container .cancelBtn:hover { background: #e5e7eb; }
+.editor-container .receiveBtn { background: #10b981; color: #fff; }
+.editor-container .receiveBtn:hover { background: #059669; }
+.editor-container .addItemBtn { background: #f3f4f6; color: #2563eb; }
+.editor-container .addItemBtn:hover { background: #e5e7eb; }
+.editor-container .deleteBtn { background: #ef4444; color: #fff; }
+.editor-container .deleteBtn:hover { background: #dc2626; }
 
-/* Desktop tabs - styled consistent with menu-management.css (scoped) */
-.inventory-management-root .menu-management-tabs {
+/* ================= Header: title + tabs + mobile select ================= */
+/* Desktop tabs - styled consistent with inventory-management.css (scoped) */
+.inventory-management-root .inventory-management-tabs {
   display: flex;
   gap: 2px;
   margin-bottom: 0;
@@ -35,7 +114,7 @@
   min-height: 36px;
 }
 
-.inventory-management-root .menu-management-tabs button {
+.inventory-management-root .inventory-management-tabs button {
   padding: 6px 14px;
   border: none;
   background: transparent;
@@ -49,17 +128,15 @@
   margin: 0;
 }
 
-.inventory-management-root .menu-management-tabs button.active {
+.inventory-management-root .inventory-management-tabs button.active {
   background: #2563eb;
   color: #fff;
 }
 
 /* Mobile select bar */
-.inventory-management-root .menu-management-selectbar {
-  display: none;
-}
+.inventory-management-root .inventory-management-selectbar { display: none; }
 
-.inventory-management-root .menu-management-selectbar select {
+.inventory-management-root .inventory-management-selectbar select {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid #d1d5db;
@@ -83,41 +160,6 @@
   background: transparent; /* was #fff, make seamless with outside */
 }
 
-/* Table styles */
-.inventory-management-root .table-responsive {
-  width: 100%;
-  overflow-x: auto;
-}
-
-.inventory-management-root .simple-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  background: #fff;
-}
-
-.inventory-management-root .simple-table thead th {
-  position: sticky;
-  top: 0;
-  background: #f3f4f6;
-  color: #111827;
-  text-align: left;
-  font-weight: 600;
-  border-bottom: 2px solid #e5e7eb;
-  padding: 10px;
-}
-
-.inventory-management-root .simple-table tbody td {
-  border-bottom: 1px solid #f1f5f9;
-  color: #374151;
-  padding: 10px;
-  vertical-align: top;
-}
-
-.inventory-management-root .simple-table tbody tr:nth-child(even) {
-  background: #f9fafb;
-}
-
 /* Status badges to match menu list labels */
 .inventory-management-root .status {
   display: inline-block;
@@ -126,14 +168,8 @@
   font-size: 0.97em;
   font-weight: 500;
 }
-.inventory-management-root .status-active {
-  color: #22c55e;
-  background: #dcfce7;
-}
-.inventory-management-root .status-inactive {
-  color: #dc2626;
-  background: #fee2e2;
-}
+.inventory-management-root .status-active { color: #22c55e; background: #dcfce7; }
+.inventory-management-root .status-inactive { color: #dc2626; background: #fee2e2; }
 
 /* Utilities */
 .inventory-management-root .text-right { text-align: right; }
@@ -147,43 +183,162 @@
 }
 
 /* Empty state paragraph */
-.inventory-management-root .inventory-tab-content p {
-  color: #6b7280;
-  margin: 8px 0 0 0;
+.inventory-management-root .inventory-tab-content p { color: #6b7280; margin: 8px 0 0 0; }
+
+/* ================= Lists: headers and action buttons (align with menu) ================= */
+.inventory-list-header,
+.purchase-list-header,
+.movements-list-header,
+.supplier-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.inventory-list-header h2,
+.purchase-list-header h2,
+.movements-list-header h2,
+.supplier-list-header h2 {
+  font-size: 1.6em;
+  font-weight: 600;
+  margin: 0;
 }
 
-/* Responsive: show select on small screens */
+/* Add buttons (desktop) */
+.add-material-btn,
+.add-po-btn,
+.new-movement-btn,
+.add-supplier-btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.add-material-btn:hover,
+.add-po-btn:hover,
+.new-movement-btn:hover,
+.add-supplier-btn:hover { background: #1d4ed8; }
+
+/* Table row hover (desktop) */
+.inventory-management-root .simple-table tbody tr:hover { background: #f1f5f9; }
+
+/* Generic secondary action buttons (used across inventory subpages) */
+.inventory-management-root .action-btn,
+.inventory-management-root .removeItemBtn,
+.inventory-management-root .remove-row {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 0.95em;
+  color: #2563eb;
+}
+.inventory-management-root .action-btn:hover,
+.inventory-management-root .removeItemBtn:hover,
+.inventory-management-root .remove-row:hover { background: #e0e7ef; }
+
+/* Modal close button common style (for elements using .closeBtn) */
+.modal-content .closeBtn {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 1.6em;
+  color: #888;
+  cursor: pointer;
+}
+.modal-content .closeBtn:hover { color: #555; }
+
+/* ================= Mobile enhancements ================= */
 @media (max-width: 768px) {
-  .inventory-management-root .menu-management-tabs { display: none; }
-  .inventory-management-root .menu-management-selectbar { display: block; background: #f3f4f6; padding: 6px 0; border-radius: 6px 6px 0 0; }
-  .inventory-management-root .inventory-tab-content { padding: 12px; }
+  /* Make primary add actions floating fab-like (inventory-specific class names) */
+  .add-material-btn,
+  .add-po-btn,
+  .new-movement-btn,
+  .add-supplier-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    padding: 0;
+    font-size: 0; /* hide text */
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.10);
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1000;
+  }
+  .add-material-btn::after,
+  .add-po-btn::after,
+  .new-movement-btn::after,
+  .add-supplier-btn::after {
+    content: "+";
+    font-size: 1.8em;
+    line-height: 1;
+    color: #fff;
+  }
 
-  /* Convert table to card-like layout */
-  .inventory-management-root .simple-table,
-  .inventory-management-root .simple-table thead,
-  .inventory-management-root .simple-table tbody,
-  .inventory-management-root .simple-table th,
-  .inventory-management-root .simple-table td,
-  .inventory-management-root .simple-table tr {
-    display: block;
-  }
-  .inventory-management-root .simple-table thead { display: none; }
-  .inventory-management-root .simple-table tr {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    margin-bottom: 12px;
-    padding: 8px 10px;
-  }
-  .inventory-management-root .simple-table td {
+  /* Ensure headers keep spacing but don't clash with floating button */
+  .inventory-list-header,
+  .purchase-list-header,
+  .movements-list-header,
+  .supplier-list-header { margin-bottom: 14px; }
+}
+
+/* Neutralize default mobile row chrome when rendering a full-width card inside */
+@media (max-width: 768px) {
+  .inventory-management-root .simple-table tbody tr.has-card {
+    background: transparent;
     border: none;
-    padding: 6px 0;
+    box-shadow: none;
+    margin: 0 0 12px 0;
   }
-  .inventory-management-root .simple-table td::before {
-    content: attr(data-label) ": ";
-    font-weight: 600;
-    color: #6b7280;
-    margin-right: 6px;
+  .inventory-management-root .simple-table tbody tr.has-card > td {
+    padding: 0;
+    border: none;
   }
 }
+
+/* Mobile: show selectbar, hide desktop tabs */
+@media (max-width: 768px) {
+  .inventory-management-root .inventory-management-tabs { display: none; }
+  .inventory-management-root .inventory-management-selectbar { display: block; margin-bottom: 10px; }
+}
+
+/* ================= Column width and utility classes (desktop) ================= */
+.inventory-management-root .col-id { width: 72px; max-width: 80px; }
+.inventory-management-root .col-sm { width: 120px; }
+.inventory-management-root .col-md { width: 180px; }
+.inventory-management-root .col-lg { width: 240px; }
+.inventory-management-root .col-actions { width: 140px; text-align: right; white-space: nowrap; }
+.inventory-management-root .col-qty,
+.inventory-management-root .col-price,
+.inventory-management-root .col-total { width: 120px; text-align: right; }
+.inventory-management-root .nowrap { white-space: nowrap; }
+.inventory-management-root .truncate { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Fine-tune numeric alignment in tables */
+.inventory-management-root .simple-table td.text-right,
+.inventory-management-root .simple-table td.col-qty,
+.inventory-management-root .simple-table td.col-price,
+.inventory-management-root .simple-table td.col-total { text-align: right; }
+
+/* ================= Minor editor alignments ================= */
+.editor-container .form-actions { /* parity with menu */
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Badge parity already defined; ensure inline usage in lists */
+/* .status, .status-active, .status-inactive already present */
