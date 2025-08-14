@@ -116,7 +116,6 @@ class MenuList extends HTMLElement {
    */
   handleEditClick(btn) {
     const itemId = btn.dataset.id;
-    const product = this.menu.find(p => String(p.item_id) === String(itemId));
     const modal = document.createElement('menu-editor');
     modal.menu = this.menu;
     modal.categories = this.categories;
