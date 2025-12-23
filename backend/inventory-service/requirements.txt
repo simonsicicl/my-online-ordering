@@ -1,3 +1,0 @@
-# AWS Lambda Python requirements for inventory-service
-
-# No external dependencies required for basic functionality
