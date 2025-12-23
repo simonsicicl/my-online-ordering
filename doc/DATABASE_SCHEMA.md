@@ -1,7 +1,7 @@
 # Database Schema Specification
 
-**Document Version**: 1.0  
-**Last Updated**: December 21, 2025  
+**Document Version**: 1.1  
+**Last Updated**: December 22, 2025  
 **Owner**: Simon Chou  
 **Status**: Single Source of Truth (MVP + Inventory + POS Scope)
 
@@ -31,20 +31,36 @@ This document defines the **complete database schema** for the My Online Orderin
 
 ### Technology Stack
 
-**Primary Database**: Aurora Serverless v2 PostgreSQL  
+**Primary Database**: Amazon RDS for PostgreSQL  
+**Instance Type**: db.t3.micro (2 vCPU, 1GB RAM)  
+**Storage**: 20GB General Purpose SSD (gp2)  
 **Version**: PostgreSQL 15.x  
 **ORM**: Drizzle ORM 0.30.x  
-**Connection Pooling**: AWS RDS Proxy
+**Connection Management**: Direct Lambda → RDS connections
 
 ### Database Configuration
 
 ```
-Host: myordering-cluster.cluster-xxx.us-east-1.rds.amazonaws.com
+Host: myordering-db-dev.xxx.us-east-1.rds.amazonaws.com
 Port: 5432
 Database: myordering
-SSL: Required (TLS 1.3)
-Max Connections: Auto-scaling (RDS Proxy handles pooling)
+SSL: Required (rds.force_ssl = 1)
+Max Connections: 87 (db.t3.micro limit) ⚠️
+Network: Public Subnet (Publicly Accessible = true)
+Security: Security Group allowlisting (Lambda SG + specific dev IPs)
 ```
+
+**Instance Constraints**:
+- **Max Connections**: 87 (PostgreSQL limit for 1GB RAM instance)
+- **Storage Limit**: 20GB
+- **Availability**: Single-AZ deployment
+- **Scaling**: Manual instance type upgrades
+
+**Connection Pool Management**:
+- **Application-level pooling** via Drizzle ORM (max 10 connections per Lambda instance)
+- **Lambda Concurrency Limit**: 50 reserved concurrent executions (prevents connection exhaustion)
+- **Connection Timeout**: 10 seconds (configured in Drizzle client)
+- **Idle Timeout**: 20 seconds (close idle connections to free pool)
 
 ### Schema Management
 
@@ -962,25 +978,23 @@ await redis.del(`user:${userId}`);
 
 ### Hot Data (PostgreSQL)
 
-- **Orders**: Keep for 3 months
+- **Orders**: Keep for 3 months (or all data if within 20GB limit)
 - **Payments**: Keep for 1 year (regulatory requirement)
 - **Inventory Logs**: Keep for 6 months
 - **Notifications**: Keep for 30 days
 
-### Cold Data (S3 via Glue Export)
+### Future Archive Strategy (If Data Exceeds 20GB)
 
-- **Orders (historical)**: > 3 months old → S3 (queryable via Athena)
-- **Inventory Logs (historical)**: > 6 months old → S3
-- **Notifications (archived)**: > 30 days old → S3
+- **Orders (historical)**: > 3 months old → Export to S3 via Lambda
+- **Inventory Logs (historical)**: > 6 months old → Export to S3
+- **Notifications (archived)**: > 30 days old → Export to S3
 
-### Archive Strategy
+### Manual Export Approach
 
-**Daily Glue Job**:
-```sql
--- Export orders older than 3 months to S3
-INSERT INTO s3_orders
-SELECT * FROM orders
-WHERE created_at < NOW() - INTERVAL '3 months';
+**Lambda-Based Export** (if needed):
+```typescript
+// Lambda function to export old orders to S3
+// Triggered monthly via EventBridge schedule
 
 -- Delete from PostgreSQL
 DELETE FROM orders
@@ -999,7 +1013,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
 
 1. **Drizzle ORM**: Use `drizzle-orm` for type-safe database access with minimal overhead (~5KB vs Prisma's ~20MB)
 2. **Transactions**: Use Drizzle transactions (`db.transaction()`) for multi-table operations
-3. **Connection Pooling**: RDS Proxy handles connection pooling, Drizzle's lightweight client minimizes connection overhead
+3. **Connection Pooling**: Application-level pooling via Drizzle ORM (max 10 connections per Lambda instance), no RDS Proxy required
 4. **Migrations**: Always run migrations before deploying Lambda functions (use `drizzle-kit` or migration runner)
 5. **Soft Deletes**: Use `isDeleted` flag instead of hard deletes for menu items
 6. **Cold Start Optimization**: Drizzle has minimal overhead, ideal for Lambda cold starts
@@ -1629,27 +1643,4 @@ RecipeCondition { id: "rc-bl-2", recipeId: "recipe-bl", variantId: "var-l" }
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|------|
 | 1.0 | 2025-12-21 | Simon Chou | Initial Baseline (Scope: v0.2.0 MVP + Inventory + POS) |
-
-### Version 1.3 (December 20, 2025)
-- **Major Refactoring**: Replaced magic string `variantKey`/`requiredVariant` with strict Foreign Key relationships
-- Added `variants` master table for centralized variant definitions
-- Modified `customization_options`: Removed `variantKey` (varchar), added `variantId` (UUID FK)
-- Modified `recipes`: Removed `requiredVariant` (varchar), added `requiredVariantId` (UUID FK)
-- Updated indexes to use new ID columns
-- Enhanced data integrity with referential constraints (prevents typos and invalid variant references)
-- Updated Entity Relationship Diagram to reflect new Variant entity
-
-### Version 1.2 (December 18, 2025)
-- Added multi-tenant inventory isolation (`storeId` on `inventory_items`)
-- Added financial snapshots (`priceAtOrder`, `costAtOrder` on `order_items`)
-- Added Recipe CHECK constraint (mutual exclusivity: menuItemId XOR modifierOptionId)
-- Refactored combo structure to self-referencing pattern (added `OrderItemType` enum, `parentOrderItemId`)
-- Updated AI Implementation Notes with Variable Base Recipe support
-
-### Version 1.1 (December 17, 2025)
-- Initial Prisma → Drizzle ORM migration
-- Established recipe-driven inventory architecture
-- Added variant matching logic (context-based recipe execution)
-
-### Version 1.0 (December 16, 2025)
-- Initial database schema specification
+| **1.1** | **Dec 22, 2025** | Simon Chou | **Architecture pivot to AWS Free Tier RDS PostgreSQL (db.t3.micro, Public Subnet, Direct Lambda connections)** |

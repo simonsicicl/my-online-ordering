@@ -15,7 +15,7 @@ This is a monorepo containing all components of the My Online Ordering System, i
 - **Language**: TypeScript
 - **Backend**: AWS Lambda (Node.js 20.x)
 - **Frontend**: React 18 + Vite
-- **Database**: Aurora Serverless v2 PostgreSQL
+- **Database**: Amazon RDS for PostgreSQL (db.t3.micro, 20GB, Single-AZ)
 - **ORM**: Drizzle ORM
 - **Infrastructure**: AWS (Lambda, API Gateway, EventBridge, S3, CloudFront)
 
@@ -111,7 +111,7 @@ This project follows a phased development approach:
 - **Phase 2**: Authorization & Store Services (Weeks 5-8) - 🚧 **IN PROGRESS**
   - AWS Cognito setup
   - Lambda functions for auth and store management
-  - RDS Proxy configuration
+  - Direct RDS connection setup (no RDS Proxy)
 
 - **Version 0.1.0**: MVP - Core Ordering System (Weeks 1-16)
 - **Version 0.2.0**: Inventory & POS System (Weeks 17-28)

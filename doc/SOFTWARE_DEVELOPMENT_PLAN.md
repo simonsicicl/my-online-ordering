@@ -1,11 +1,11 @@
 # My Online Ordering System - Software Development Plan
 
 ## Document Information
-- **Version**: 1.1
+- **Version**: 1.2
 - **Date**: December 22, 2025
-- **Status**: Master Roadmap (Aligned with v1.0 Design Specs)
+- **Status**: Master Roadmap (Aligned with v1.1 Design Specs)
 - **Owner**: Simon Chou
-- **Related**: [CONCEPT.md](./CONCEPT.md)
+- **Related**: [CONCEPT.md](./CONCEPT.md), [ARCHITECTURE_OVERVIEW_v1.1_FREE_TIER.md](./ARCHITECTURE_OVERVIEW_v1.1_FREE_TIER.md)
 
 ---
 
@@ -20,7 +20,7 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
 - Function independence and loose coupling
 - API-first design with API Gateway
 - Event-driven communication (EventBridge, SQS, SNS)
-- Managed database services (Aurora PostgreSQL, Redis)
+- Managed database services (RDS PostgreSQL, Redis)
 - Auto-scaling and pay-per-use
 - Fault tolerance with built-in retry mechanisms
 
@@ -31,19 +31,19 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
 **1. Menu Service**
 - **Responsibility**: Product catalog, pricing, images, customizations
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM
-- **Database**: Aurora Serverless v2 PostgreSQL (relational data) + ElastiCache Redis (cache) + S3 (image storage)
+- **Database**: RDS PostgreSQL (db.t3.micro, 20GB) (relational data) + ElastiCache Redis (cache.t2.micro, Single Node) (cache) + S3 (image storage)
 - **Lambda Functions**:
   - `menu-get-handler` - GET /api/v1/menu/:storeId (cached in Redis, 5 min TTL)
   - `menu-create-handler` - POST /api/v1/menu/items
   - `menu-update-handler` - PUT /api/v1/menu/items/:id (invalidate cache)
   - `menu-availability-handler` - PATCH /api/v1/menu/items/:id/availability (invalidate cache)
-- **Connection**: RDS Proxy (connection pooling for Lambda)
+- **Connection**: Direct Lambda → RDS PostgreSQL (Drizzle ORM connection pooling, max 10 connections/instance)
 - **Events**: EventBridge events → `Menu.Updated`, `Item.SoldOut`, `Item.BackInStock`
 
 **2. Order Service**
 - **Responsibility**: Order lifecycle, state machine, transaction coordination
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM + Step Functions (state machine)
-- **Database**: Aurora Serverless v2 PostgreSQL (ACID transactions for orders)
+- **Database**: RDS PostgreSQL (db.t3.micro) (ACID transactions for orders)
 - **State Machine**: AWS Step Functions
   ```
   Pending → Paid → Confirmed → Preparing → Ready → Completed
@@ -55,15 +55,15 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
   - `order-get-handler` - GET /api/v1/orders/:id
   - `order-update-status-handler` - PATCH /api/v1/orders/:id/status
   - `order-cancel-handler` - POST /api/v1/orders/:id/cancel (rollback transaction)
-- **Connection**: RDS Proxy (connection pooling)
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Events**: EventBridge → `Order.Created`, `Order.Paid`, `Order.StatusChanged`, `Order.Cancelled`
 
 **3. Inventory Service**
 - **Responsibility**: Recipe-driven ingredient tracking, stock reservation, automatic alerts
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM
 - **Database**: 
-  - Aurora Serverless v2 PostgreSQL (ingredient inventory with recipe-based deduction)
-  - ElastiCache Redis (temporary reservation locks, TTL)
+  - RDS PostgreSQL (db.t3.micro) (ingredient inventory with recipe-based deduction)
+  - ElastiCache Redis (cache.t2.micro, Single Node) (temporary reservation locks, TTL)
 - **Key Features**:
   - **Recipe-Driven Inventory**: Inventory deduction happens via Recipes (ingredient-level tracking)
   - **Centralized Variant Registry**: Master Variants + Contextual Overrides (size, temperature, sweetness)
@@ -77,14 +77,14 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
   - `inventory-release-handler` - POST /api/v1/inventory/release (remove Redis lock)
   - `inventory-check-handler` - GET /api/v1/inventory/:itemId (cached in Redis)
   - `inventory-cleanup-cron` - EventBridge trigger (every minute, clean expired locks)
-- **Connection**: RDS Proxy
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Events**: EventBridge → `Stock.Reserved`, `Stock.Committed`, `Stock.LowAlert`, `Stock.Depleted`
 
 **4. Payment Service**
 - **Responsibility**: Payment gateway abstraction, reconciliation
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM + AWS SDK v3
-- **Database**: Aurora Serverless v2 PostgreSQL (payment records, ACID critical) + ElastiCache Redis (idempotency keys)
-- **Integrations**: Stripe SDK, LinePay API, AWS Secrets Manager (credentials)
+- **Database**: RDS PostgreSQL (db.t3.micro) (payment records, ACID critical) + ElastiCache Redis (cache.t2.micro, Single Node) (idempotency keys)
+- **Integrations**: Stripe SDK, LinePay API, SSM Parameter Store (Standard tier, SecureString for credentials)
 - **Lambda Functions**:
   - `payment-charge-handler` - POST /api/v1/payments/charge (transaction with order update)
   - `payment-refund-handler` - POST /api/v1/payments/refund (atomic refund record)
@@ -95,8 +95,8 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
   - Tokenization (no card storage)
   - Idempotency with Redis (24-hour TTL)
   - PostgreSQL transactions for payment consistency
-  - Secrets Manager for API keys
-- **Connection**: RDS Proxy
+  - SSM Parameter Store (Standard tier, SecureString) for API keys
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Events**: EventBridge → `Payment.Success`, `Payment.Failed`, `Payment.Refunded`
 
 #### User & Access Management
@@ -104,7 +104,7 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
 **5. Authorization Service**
 - **Responsibility**: Authentication, RBAC, session management
 - **Tech Stack**: AWS Cognito (managed auth) + TypeScript Lambda (custom flows) + Drizzle ORM
-- **Database**: Cognito User Pools (authentication) + Aurora Serverless v2 PostgreSQL (user metadata, permissions)
+- **Database**: Cognito User Pools (authentication) + RDS PostgreSQL (db.t3.micro) (user metadata, permissions)
 - **Roles**: User, Cashier, Lead (Shift Leader), Manager, Merchant, Admin (Cognito Groups + PostgreSQL roles table)
 - **RBAC Model**: Role-Based Access Control with granular permissions aligned with design specs
 - **Lambda Functions**:
@@ -112,38 +112,38 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
   - `auth-post-confirmation` - Post-signup actions, sync to database
   - `auth-custom-message` - Custom email templates
   - `auth-token-validator` - API Gateway authorizer (verify Cognito JWT + check PostgreSQL permissions)
-- **Connection**: RDS Proxy
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Security**: Cognito password policies, JWT (RS256), MFA support, token refresh
 
 **6. User Profile Service**
 - **Responsibility**: Customer data, preferences, saved payments
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM
-- **Database**: Aurora Serverless v2 PostgreSQL (user profiles, relational data)
+- **Database**: RDS PostgreSQL (db.t3.micro) (user profiles, relational data)
 - **Lambda Functions**:
   - `profile-get-handler` - GET /api/v1/users/:id (cached in Redis)
   - `profile-update-handler` - PUT /api/v1/users/:id (invalidate cache)
   - `profile-payment-methods-handler` - POST /api/v1/users/:id/payment-methods (encrypted)
   - `profile-orders-handler` - GET /api/v1/users/:id/orders (JOIN with orders table)
-- **Connection**: RDS Proxy
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 
 #### Operational Services
 
 **7. Store Service**
 - **Responsibility**: Restaurant config, hours, delivery rules
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM
-- **Database**: Aurora Serverless v2 PostgreSQL (store configs) + ElastiCache Redis (cache) + CloudFront (edge caching)
+- **Database**: RDS PostgreSQL (db.t3.micro) (store configs) + ElastiCache Redis (cache.t2.micro, Single Node) (cache) + CloudFront (edge caching)
 - **Lambda Functions**:
   - `store-get-handler` - GET /api/v1/stores/:id (Redis cache, 10 min TTL)
   - `store-update-hours-handler` - PUT /api/v1/stores/:id/hours (invalidate cache)
   - `store-status-handler` - PATCH /api/v1/stores/:id/status (invalidate cache, notify WebSocket)
   - `store-delivery-zones-handler` - PUT /api/v1/stores/:id/delivery-zones (JSONB column)
-- **Connection**: RDS Proxy
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Events**: EventBridge → `Store.StatusChanged`, `Store.ConfigUpdated`
 
 **8. Device Service**
 - **Responsibility**: Hardware registry, print jobs, health monitoring
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM + AWS IoT Core (device communication)
-- **Database**: Aurora Serverless v2 PostgreSQL (device registry, status logs) + SQS (job queue)
+- **Database**: RDS PostgreSQL (db.t3.micro) (device registry, status logs) + SQS (job queue)
 - **Supported Devices**:
   - Receipt Printers (ESC/POS, StarPRNT via IoT)
   - Card Readers (PAX, Verifone)
@@ -154,49 +154,48 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
   - `device-print-job-handler` - POST /api/v1/devices/:id/print → SQS (job queue)
   - `device-status-handler` - GET /api/v1/devices/:id/status (real-time from IoT Core + historical from PostgreSQL)
   - `device-iot-consumer` - Process IoT Core messages, log to PostgreSQL
-- **Connection**: RDS Proxy
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Protocols**: AWS IoT Core (MQTT), Ethernet, Bluetooth
 - **Events**: EventBridge → `Device.Registered`, `Device.Offline`, `PrintJob.Completed`
 
 **9. Notification Service**
 - **Responsibility**: Multi-channel messaging, real-time push
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM + API Gateway WebSocket API
-- **Database**: Aurora Serverless v2 PostgreSQL (notification history) + ElastiCache Redis (WebSocket connection IDs)
+- **Database**: RDS PostgreSQL (db.t3.micro) (notification history) + ElastiCache Redis (cache.t2.micro, Single Node) (WebSocket connection IDs)
 - **Channels**: WebSocket (API Gateway), Email (SES), SMS (SNS), Push (SNS Mobile)
 - **Lambda Functions**:
   - `notification-send-handler` - POST /api/v1/notifications/send (log to PostgreSQL)
   - `websocket-connect` - WebSocket $connect route (store connectionId in Redis)
   - `websocket-disconnect` - WebSocket $disconnect route (remove from Redis)
   - `notification-dispatcher` - EventBridge consumer → fan-out to channels
-- **Connection**: RDS Proxy
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Events Subscribed**: All domain events via EventBridge rules
 
 #### Business Intelligence
 
 **10. CRM Service**
 - **Responsibility**: Loyalty, coupons, customer segmentation
-- **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM + SageMaker (ML recommendations)
-- **Database**: Aurora Serverless v2 PostgreSQL (points, coupons, transactions) + ElastiCache Redis (coupon validation cache)
+- **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM
+- **Database**: RDS PostgreSQL (db.t3.micro) (points, coupons, transactions) + ElastiCache Redis (cache.t2.micro, Single Node) (coupon validation cache)
 - **Lambda Functions**:
   - `crm-points-handler` - GET /api/v1/crm/users/:id/points (cached in Redis)
   - `crm-coupon-create-handler` - POST /api/v1/crm/coupons (PostgreSQL with expiry dates)
   - `crm-coupon-validate-handler` - POST /api/v1/crm/coupons/:code/validate (check Redis cache first)
-  - `crm-recommendation-handler` - SageMaker inference endpoint (query from PostgreSQL)
+  - `crm-recommendation-handler` - SQL-based heuristics (aggregate queries on OrderItems for best sellers)
 - **Features**: 
   - Tiered membership (PostgreSQL triggers for tier calculation)
   - Birthday rewards (EventBridge scheduled rule + PostgreSQL query)
   - Referral bonuses (relational tracking)
-- **Connection**: RDS Proxy
+  - SQL-based recommendations (aggregate queries, no ML for MVP)
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Events**: EventBridge → `Points.Earned`, `Coupon.Applied`, `Tier.Upgraded`
 
 **11. Report Service**
-- **Responsibility**: Analytics, dashboards, anomaly detection
-- **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM + AWS Glue (ETL) + Athena (SQL analytics)
+- **Responsibility**: Analytics, dashboards
+- **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM
 - **Database**: 
-  - Aurora Serverless v2 PostgreSQL (real-time queries, materialized views for reports)
-  - S3 (historical data export from PostgreSQL via Glue)
-  - Athena (query S3 for long-term analytics)
-  - QuickSight (dashboards, connect to PostgreSQL + Athena)
+  - RDS PostgreSQL (db.t3.micro) (direct SQL queries, materialized views for reports)
+  - QuickSight (dashboards, connect directly to PostgreSQL)
 - **Reports**:
   - Daily Z-Report (sales summary from PostgreSQL)
   - Best sellers by hour/day/week (PostgreSQL aggregations)
@@ -208,15 +207,15 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
   - `report-anomalies-handler` - GET /api/v1/reports/anomalies (PostgreSQL query)
   - `report-z-report-generator` - EventBridge schedule (daily 2 AM, generate PDF)
   - `report-anomaly-scanner` - EventBridge schedule (every 5 min, check order status)
-- **Connection**: RDS Proxy
-- **ETL**: AWS Glue exports PostgreSQL data to S3 daily for long-term storage
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
+- **Analytics**: Direct PostgreSQL queries with materialized views (no Glue/Athena for MVP)
 
 #### Integration Layer
 
 **12. Delivery Platform Webhooks**
 - **Responsibility**: UberEats/Foodpanda integration, order import & menu sync
 - **Tech Stack**: TypeScript (Node.js 20.x Lambda Runtime) + Drizzle ORM + axios/node-fetch
-- **Database**: Aurora Serverless v2 PostgreSQL (order mapping, sync logs) + ElastiCache Redis (deduplication, 1-hour TTL)
+- **Database**: RDS PostgreSQL (db.t3.micro) (order mapping, sync logs) + ElastiCache Redis (deduplication, 1-hour TTL)
 - **Multi-tenancy**: All platform orders and sync data isolated by `storeId`
 - **Platforms Supported**:
   - UberEats Webhook API
@@ -227,7 +226,7 @@ The system follows a **serverless architecture** on AWS, leveraging Lambda funct
   - `webhook-signature-validator` - HMAC-SHA256 verification
   - `platform-status-sync` - Outbound status updates (log to PostgreSQL)
   - `platform-menu-sync` - Menu/inventory sync (EventBridge schedule, read from PostgreSQL)
-- **Connection**: RDS Proxy
+- **Connection**: **Direct Lambda → RDS PostgreSQL** (Drizzle ORM connection pooling) ⚡
 - **Retry Logic**: SQS with exponential backoff, DLQ for failures
 - **Events**: EventBridge → `ExternalOrder.Received`, `Platform.SyncFailed`
 
@@ -358,7 +357,7 @@ npm run preview  # Preview production build locally
 
 ### 1.4 Database Design
 
-**Aurora Serverless v2 PostgreSQL (Primary Database)**
+**RDS PostgreSQL (Primary Database)**
 
 **Schema Design (Drizzle ORM)**
 ```typescript
@@ -432,11 +431,11 @@ export const orders = pgTable('Order', {
 - **Idempotency Keys**: `idempotency:{key}` (TTL 24 hours)
 - **Rate Limiting**: `rate:{ip}:{endpoint}` (sliding window)
 
-**S3 + Athena (Data Lake for Long-term Analytics)**
-- **Daily Export**: AWS Glue job exports PostgreSQL data to S3 (Parquet format)
-- **Partitioning**: `s3://bucket/year=2025/month=12/day=17/orders.parquet`
-- **Athena Queries**: Historical analysis (> 3 months old data)
-- **Cost Optimization**: Keep only 3 months in Aurora, rest in S3
+**PostgreSQL Analytics (Direct SQL Queries for MVP)**
+- **Materialized Views**: Pre-computed reports (daily sales, best sellers)
+- **Refresh Strategy**: Hourly refresh via EventBridge scheduled Lambda
+- **Long-term Data**: Keep all data in RDS (20GB limit, monitor usage)
+- **Future Scaling**: If data exceeds 20GB, export old data to S3 via Lambda (no Glue needed)
 
 **Key Design Patterns**
 - **Drizzle Kit Migrations**: Version-controlled schema changes
@@ -489,15 +488,15 @@ export const orders = pgTable('Order', {
 | **ORM** | Drizzle ORM | Type-safe queries, lightweight (~5KB vs Prisma's ~20MB), optimized for serverless cold starts |
 | **API Gateway** | AWS API Gateway (HTTP + WebSocket) | Managed service, throttling, auth, WebSocket support |
 | **Authentication** | AWS Cognito | Managed user pools, OAuth2, MFA, no custom auth code |
-| **Database (Primary)** | Aurora Serverless v2 PostgreSQL | ACID compliance, relational data, auto-scaling, familiar SQL |
-| **Connection Pool** | RDS Proxy | Manage Lambda connections, reduce cold start impact |
-| **Cache** | ElastiCache Redis | In-memory speed, TTL, pub/sub, session storage |
+| **Database (Primary)** | RDS PostgreSQL (db.t3.micro, Single-AZ) | ACID compliance, relational data, Free Tier eligible |
+| **Connection Pool** | Drizzle ORM (Application-level) | Direct Lambda → RDS connections, application-level pooling |
+| **Cache** | ElastiCache Redis (cache.t2.micro, Single Node) | In-memory speed, TTL, pub/sub, Free Tier eligible |
 | **Event Bus** | EventBridge | Event-driven architecture, rules engine, schema registry |
 | **Message Queue** | SQS + SNS | Reliable, decoupling, DLQ, fan-out |
 | **Workflow** | Step Functions | State machine orchestration, visual workflows |
 | **Object Storage** | S3 + CloudFront | Image storage, CDN, low cost |
-| **Data Lake** | S3 + Athena + Glue | Historical analytics, SQL on S3, export from PostgreSQL |
-| **ML** | SageMaker | Managed ML, inference endpoints |
+| **Analytics** | PostgreSQL (Direct SQL queries) | Simple aggregations, materialized views (no Glue/Athena for MVP) |
+| **Recommendations** | SQL-based heuristics | Aggregate queries on OrderItems (no SageMaker for MVP) |
 
 ### 2.2 Frontend Technologies
 
@@ -524,10 +523,10 @@ export const orders = pgTable('Order', {
 | **Monitoring** | CloudWatch | Metrics, logs, alarms, dashboards |
 | **Logging** | CloudWatch Logs + Insights | Centralized logs, log queries |
 | **Tracing** | X-Ray | Distributed tracing, service map |
-| **Secret Management** | AWS Secrets Manager + Parameter Store | API keys, DB credentials |
-| **CDN** | CloudFront | Asset delivery, DDoS protection, edge caching |
+| **Secret Management** | SSM Parameter Store (Standard tier, SecureString) | API keys, DB credentials (Free Tier) |
+| **CDN** | CloudFront | Asset delivery, edge caching |
 | **DNS** | Route 53 | Domain management, health checks |
-| **Security** | WAF + Shield | DDoS protection, rate limiting |
+| **Security** | Security Groups + API Gateway Throttling | Network firewall, rate limiting (Free Tier) |
 | **Cost Management** | Cost Explorer + Budgets | Cost tracking, alerts |
 
 ### 2.4 Security Stack
@@ -536,10 +535,10 @@ export const orders = pgTable('Order', {
 |-------|----------------|
 | **Authentication** | JWT (RS256), OAuth2, bcrypt |
 | **Authorization** | RBAC with policy engine |
-| **API Security** | Rate limiting, CORS, CSRF tokens |
+| **API Security** | Rate limiting (API Gateway), CORS, CSRF tokens |
 | **Data Encryption** | TLS 1.3, AES-256 at rest |
 | **Payment Security** | PCI DSS Level 1, tokenization |
-| **Secrets** | Vault, environment variables |
+| **Secrets** | SSM Parameter Store (Standard tier, SecureString) |
 | **Vulnerability Scanning** | Snyk, OWASP ZAP |
 | **Penetration Testing** | Annual third-party audit |
 
@@ -574,7 +573,13 @@ export const orders = pgTable('Order', {
 **Objectives**: AWS environment setup, database design, CI/CD pipeline
 
 **Tasks**:
-- AWS account setup (Lambda, API Gateway, Aurora, RDS Proxy, ElastiCache)
+- AWS account setup (Lambda, API Gateway, RDS PostgreSQL, ElastiCache)
+- **RDS Instance Creation**:
+  - Instance type: **db.t3.micro** (2 vCPU, 1GB RAM) or **db.t4g.micro** (ARM)
+  - Storage: **20GB General Purpose SSD (gp2)**
+  - Network: **Public subnet** with **Security Group allowlisting** (Lambda SG + dev IPs)
+  - Configuration: **Single-AZ**, **Publicly Accessible = true**, **SSL Required** (rds.force_ssl = 1)
+  - Parameter Group: Custom parameter group with **max_connections = 87**
 - GitHub repository initialization
 - CI/CD pipeline setup (GitHub Actions)
   - Lint & test automation
@@ -582,19 +587,23 @@ export const orders = pgTable('Order', {
 - Database schema design (Drizzle ORM)
   - Tables: stores, menu_items, categories, orders, order_items, payments, users
   - Indexes optimization
+  - **Connection pooling configuration**: Application-level (Drizzle ORM, max 10 connections per Lambda instance)
 - API Gateway configuration (HTTP + WebSocket)
 - CloudWatch monitoring setup
-- Secrets Manager configuration (database credentials, API keys)
+  - **New Alarms**: Database connections > 70 (80% of max_connections), Free storage < 2GB, CPU > 80%
+- SSM Parameter Store configuration (Standard tier, SecureString for database credentials, API keys)
+- Lambda Concurrency Configuration: Set ReservedConcurrentExecutions = 50 for all DB-connected Lambdas
 
 **Deliverables**:
-- ✅ AWS infrastructure provisioned
+- ✅ AWS infrastructure provisioned (RDS instance created and configured)
 - ✅ Database schema finalized (Drizzle schema file)
 - ✅ CI/CD pipeline functional
 - ✅ Development environment ready
+- ✅ Security Groups and connection pooling configured
 
 **Milestones**:
-- Week 2: AWS setup complete, database created
-- Week 4: CI/CD working, can deploy Lambda functions
+- Week 2: AWS setup complete, RDS instance created (db.t3.micro, public subnet, SSL enabled)
+- Week 4: CI/CD working, can deploy Lambda functions with direct RDS connections
 
 ---
 
@@ -899,12 +908,11 @@ export const orders = pgTable('Order', {
   - Anomaly detection (stuck orders, fraud patterns)
   - Automated Z-Report generation (EventBridge schedule)
   - PostgreSQL materialized views (hourly refresh)
-  - Athena integration for historical data (S3 export via Glue)
+  - Direct SQL queries on RDS (no Glue/Athena for MVP)
 
 **Database Schema Updates**:
 - Materialized views: `mv_daily_sales`, `mv_best_sellers`, `mv_staff_performance`
-- AWS Glue job for daily PostgreSQL → S3 export
-- Athena tables for long-term analytics
+- Refresh via EventBridge scheduled Lambda (hourly)
 
 **Lambda Functions**:
 - `report-sales-handler`, `report-bestsellers-handler`, `report-anomalies-handler`
@@ -919,7 +927,7 @@ export const orders = pgTable('Order', {
 
 **Milestones**:
 - Week 30: Report service complete with materialized views
-- Week 32: Dashboard analytics UI complete, Athena setup
+- Week 32: Dashboard analytics UI complete
 
 **Testing**: Report accuracy validation, large dataset performance tests
 
@@ -1328,7 +1336,7 @@ export const orders = pgTable('Order', {
 **Testing Checklist**:
 - [ ] Load test: 500 concurrent users, 1000+ orders/hour
 - [ ] Stress test: 2x peak load, system remains stable
-- [ ] Failover test: Aurora failover, Lambda scaling
+- [ ] Failover test: RDS instance recovery, Lambda scaling
 - [ ] Security scan: OWASP ZAP automated scan, no critical issues
 - [ ] Dependency scan: Snyk, all vulnerabilities patched
 - [ ] Payment security: PCI DSS validation, Stripe compliance
@@ -1711,7 +1719,7 @@ Types: feat, fix, docs, refactor, test, chore
 - **Monitoring**: Backup success verification, integrity checks
 
 **Risk 7: Security Breach**
-- **Mitigation**: Regular security audits, dependency scanning, WAF, rate limiting
+- **Mitigation**: Regular security audits, dependency scanning, API Gateway throttling, Security Groups
 - **Monitoring**: Intrusion detection, anomalous access patterns
 
 ---
@@ -1842,7 +1850,11 @@ Types: feat, fix, docs, refactor, test, chore
 - **Built-in HA**: Multi-AZ deployment by default, automatic failover
 - **Fast Iteration**: Deploy individual functions without full system restart
 
-**Why Aurora Serverless PostgreSQL as Primary Database?**
+**Why Amazon RDS PostgreSQL as Primary Database?**
+- **Clear Upgrade Path**: 
+  - Start with db.t3.micro for initial deployment
+  - Scale vertically to db.t3.small/db.t3.medium as needed
+  - Migrate to Aurora Serverless v2 for auto-scaling when requirements demand (future consideration)
 - **Developer Familiarity**: SQL is universal, less learning curve than NoSQL query languages
 - **Relational Data**: Restaurant systems have natural relationships (orders ↔ items ↔ users)
 - **ACID Transactions**: Critical for orders, payments, inventory (atomicity guarantees)
@@ -1850,7 +1862,26 @@ Types: feat, fix, docs, refactor, test, chore
 - **Drizzle ORM**: Lightweight (~5KB), type-safe queries, optimized for serverless cold starts
 - **JSONB Support**: Best of both worlds (structured + flexible schema for config data)
 - **Mature Ecosystem**: pgAdmin, DataGrip, countless tools and extensions
-- **Cost-Effective**: Aurora Serverless v2 auto-pauses when idle, scales to zero
+- **Suitable Performance**: 
+  - db.t3.micro (1GB RAM, 2 vCPU) handles 100+ concurrent users, 200+ orders/hour
+  - Max connections: 87 (managed with Lambda concurrency limits)
+  - 3,000 IOPS (gp2: 100 baseline + 3 per GB × 20GB)
+- **Deployment Characteristics**: 
+  - Single-AZ deployment (99.5% uptime)
+  - Manual scaling (instance type upgrades)
+  - 20GB storage with monitoring for expansion planning
+
+**Why Direct Lambda → RDS Connections?**
+- **Simplified Architecture**: Direct connections via Drizzle ORM
+- **Application-Level Pooling**: 
+  - Drizzle ORM manages connections (max 10 per Lambda instance)
+  - Lambda concurrency limits (Reserved concurrent executions = 50)
+  - Connection timeout: 10 seconds
+  - Idle timeout: 20 seconds
+- **When to Add RDS Proxy**: 
+  - Lambda concurrency > 100 sustained
+  - Cold start latency becomes critical (p95 > 500ms)
+  - Connection exhaustion despite pooling
 
 **Why Redis for Caching?**
 - **Speed**: Sub-millisecond latency for hot data (menu, store config)
@@ -1858,19 +1889,29 @@ Types: feat, fix, docs, refactor, test, chore
 - **Versatility**: Cache, session storage, distributed locks, pub/sub
 - **Lambda Compatible**: ElastiCache works seamlessly with VPC Lambda
 
-**Why RDS Proxy?**
-- **Connection Pooling**: Solves Lambda's connection limit problem (PostgreSQL max connections)
-- **Reduced Cold Starts**: Reuses DB connections across Lambda invocations
-- **Failover**: Automatic redirect on DB failure
-- **IAM Authentication**: No hardcoded DB passwords
-
 **When Would We Use DynamoDB?**
 - **Extreme Scale**: If hitting 100K+ TPS (transactions per second)
 - **Key-Value Only**: Data with simple access patterns (single-key lookups)
 - **Global Tables**: Multi-region active-active (not needed for restaurant system)
 - **Event Sourcing**: When DynamoDB Streams are critical to architecture
 
-**For This Restaurant System**: Aurora PostgreSQL + Redis is the optimal choice for 99% of restaurants (even chains with 100+ locations).
+**When Would We Consider Aurora Serverless v2 (Future Upgrade)?**
+- **Capacity Requirements**: 
+  - Concurrent users > 200 sustained
+  - Orders per hour > 500 sustained
+  - Database connections > 60 sustained
+  - Storage > 18GB (approaching 20GB limit)
+- **Performance Requirements**: 
+  - p95 latency target < 100ms
+  - IOPS > 3,000
+- **Availability Requirements**: 
+  - Uptime SLA > 99.5% (need Multi-AZ with automatic failover)
+  - Zero-downtime scaling required
+
+**For This Restaurant System**: 
+- **Initial Phase**: Amazon RDS PostgreSQL (db.t3.micro) for deployment and testing
+- **Growth Phase**: Scale to db.t3.small/db.t3.medium as traffic increases
+- **Production Scale**: Consider Aurora Serverless v2 for auto-scaling and Multi-AZ HA (future upgrade)
 
 ### B. Third-Party Services
 
@@ -1906,18 +1947,6 @@ Types: feat, fix, docs, refactor, test, chore
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2025-12-17 | Technical Team | Initial draft |
+| 1.0 | 2025-12-17 | Simon Chou | Initial draft |
 | 1.1 | 2025-12-22 | Simon Chou | Aligned technical concepts with v1.0 Design Specs: Recipe-Driven Inventory (Ingredients & Variants), Centralized Variant Registry, RBAC with LEAD role, Manual Discounts in v0.2.0, Delivery Platform Integration limited to UberEats & Foodpanda (Deliveroo removed), Multi-tenancy emphasis |
-
----
-
-**Next Steps**:
-1. Review and approve by Tech Lead & CTO
-2. Refine estimates based on team feedback
-3. Begin infrastructure setup (Phase 1, Week 1)
-4. Schedule bi-weekly architecture review meetings
-
-**Contact**:
-- **Tech Lead**: [Name, Email]
-- **DevOps Lead**: [Name, Email]
-- **Product Manager**: [Name, Email]
+| **1.2** | **2025-12-22** | **Simon Chou** | **Database architecture update: Aurora Serverless v2 → RDS PostgreSQL (db.t3.micro, 20GB, Single-AZ, Public Subnet), Connection model: RDS Proxy → Direct Lambda connections with application-level pooling, Updated all 12 services, Phase 1 tasks, and database selection rationale** |
