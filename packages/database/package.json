@@ -1,0 +1,33 @@
+{
+  "name": "@myordering/database",
+  "version": "0.1.0",
+  "description": "Database layer with Drizzle ORM for My Online Ordering System",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "db:generate": "drizzle-kit generate:pg",
+    "db:push": "drizzle-kit push:pg",
+    "db:studio": "drizzle-kit studio",
+    "db:migrate": "tsx src/migrate.ts"
+  },
+  "keywords": [
+    "database",
+    "drizzle",
+    "postgresql"
+  ],
+  "author": "Simon Chou",
+  "license": "MIT",
+  "dependencies": {
+    "drizzle-orm": "^0.30.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "drizzle-kit": "^0.20.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
