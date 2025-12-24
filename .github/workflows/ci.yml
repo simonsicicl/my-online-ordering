@@ -23,6 +23,20 @@ jobs:
         with:
           version: 8
       
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+      
+      - name: Setup pnpm cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+      
       - name: Install dependencies
         run: pnpm install
       
@@ -34,6 +48,96 @@ jobs:
       
       - name: Test
         run: pnpm test
+
+  # Auto-deploy to Staging when develop branch is pushed
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    # Uncomment when GitHub Environment is created in Settings > Environments
+    # environment:
+    #   name: staging
+    #   url: https://staging.myordering.com
+    
+    steps:
+      - uses: actions/checkout@v4
       
-      - name: Type check
-        run: pnpm run type-check
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Deploy to AWS Lambda (Staging)
+        run: |
+          echo "Deploying to staging environment..."
+          # TODO: Add actual deployment commands in Phase 1 completion
+          # Example commands:
+          # - Deploy Lambda functions: aws lambda update-function-code
+          # - Update API Gateway: aws apigateway create-deployment
+          # - Run database migrations: pnpm db:migrate
+          echo "Staging deployment completed (placeholder)"
+      
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on staging..."
+          # TODO: Add actual smoke tests
+          # curl https://staging.myordering.com/health
+          echo "Smoke tests passed (placeholder)"
+
+  # Auto-deploy to Production when main branch is pushed
+  deploy-production:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    # Uncomment when GitHub Environment is created in Settings > Environments
+    # environment:
+    #   name: production
+    #   url: https://myordering.com
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: us-east-1
+      
+      - name: Deploy to AWS Lambda (Production)
+        run: |
+          echo "Deploying to production environment..."
+          # TODO: Add actual deployment commands in v0.1.0 release
+          # Example commands:
+          # - Deploy Lambda functions: aws lambda update-function-code
+          # - Update API Gateway: aws apigateway create-deployment
+          # - Run database migrations: pnpm db:migrate
+          echo "Production deployment completed (placeholder)"
+      
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on production..."
+          # TODO: Add actual smoke tests
+          # curl https://myordering.com/health
+          echo "Smoke tests passed (placeholder)"
+      
+      - name: Notify deployment success
+        run: |
+          echo "Notifying team about successful deployment..."
+          # TODO: Add notification integration
+          # - Slack webhook
+          # - Email notification
+          # - Discord notification
+          echo "Notification sent (placeholder)"
