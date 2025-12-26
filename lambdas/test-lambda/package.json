@@ -1,0 +1,9 @@
+{
+  "name": "test-lambda",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "postgres": "^3.4.3",
+    "ioredis": "^5.3.2"
+  }
+}
