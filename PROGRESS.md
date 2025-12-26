@@ -1,17 +1,12 @@
 # Development Progress
 
-> Last Updated: 2025-12-25  
-> Current: **v0.1.0 Phase 1 Complete** → Starting Phase 2  
+> Last Updated: 2025-12-26  
+> Current: **v0.1.0 Phase 2 Prerequisites Complete** → Ready for Phase 2 Core  
 > SDP Reference: [SOFTWARE_DEVELOPMENT_PLAN.md](doc/SOFTWARE_DEVELOPMENT_PLAN.md)
 
 ---
 
 ## 🎯 Next Steps
-
-### Phase 2 Prerequisites (Deferred from Phase 1, ~2-3 hours)
-1. [ ] **API Gateway** (30-45 min) - HTTP + WebSocket APIs
-2. [ ] **ElastiCache Redis** (45-60 min) - cache.t2.micro, VPC config
-3. [ ] **Test Lambda** (1 hour) - Hello World + RDS connection test
 
 ### Phase 2 Core Tasks (SDP Week 5-8)
 4. [ ] Cognito User Pool setup
@@ -22,6 +17,35 @@
 ---
 
 ## 📊 Current Status
+
+### Phase 2 Prerequisites: Deferred Infrastructure ✅
+**Status**: Complete (100%)  
+**Completed**: 2025-12-26 | **Time**: 3 hours
+
+#### ✅ Infrastructure Deliverables (3/3)
+- **API Gateway HTTP API**: oq6p23olhh (https://oq6p23olhh.execute-api.us-west-2.amazonaws.com)
+  - CORS enabled (all origins/methods)
+  - Throttling: 100 req/sec, burst 200
+- **API Gateway WebSocket API**: foq4k9coo4 (wss://foq4k9coo4.execute-api.us-west-2.amazonaws.com)
+- **ElastiCache Redis**: myordering-redis-dev (cache.t3.micro, available)
+  - Endpoint: myordering-redis-dev.p9gfjg.0001.usw2.cache.amazonaws.com:6379
+  - Security Group: sg-0216e19ba422dce16 (allows RDS SG + local IP)
+- **Test Lambda**: myordering-test-lambda
+  - ✅ RDS PostgreSQL connection verified (PostgreSQL 17.6)
+  - ✅ Redis connection verified (PING, SET, GET)
+  - Runtime: Node.js 20.x, Timeout: 60s, Memory: 512MB
+  - IAM Role: myordering-lambda-execution-role (VPC + CloudWatch + SSM access)
+
+#### 📝 SSM Parameters Created
+- `/myordering/dev/api-gateway-id` = oq6p23olhh
+- `/myordering/dev/websocket-api-id` = foq4k9coo4
+- `/myordering/dev/redis-endpoint` = myordering-redis-dev.p9gfjg.0001.usw2.cache.amazonaws.com
+- `/myordering/dev/redis-url` = redis://myordering-redis-dev.p9gfjg.0001.usw2.cache.amazonaws.com:6379
+
+#### 🔧 Technical Notes
+- Used cache.t3.micro instead of cache.t2.micro (t2 unavailable in us-west-2)
+- Lambda uses environment variables instead of SSM runtime calls (faster cold start)
+- VPC configuration: 4 subnets across us-west-2a/b/c/d, RDS security group
 
 ### Phase 1: Foundation & Infrastructure ✅
 **Status**: Complete (100% core tasks)  
@@ -38,14 +62,6 @@
 - Environment Variables (.env.local)
 - Git Workflow Documentation (bilingual)
 - Monorepo (pnpm + Turborepo)
-
-#### ⏸️ Deferred to Phase 2 (3/3 from SDP Extended)
-
-| Item | Why Deferred | When Needed |
-|------|--------------|-------------|
-| API Gateway | No Lambda handlers yet | Before Authorization Service |
-| ElastiCache Redis | No caching use cases yet | Before Store Service |
-| Lambda Deployment | No code to deploy | With first Lambda function |
 
 ---
 

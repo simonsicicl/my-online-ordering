@@ -5,6 +5,7 @@
 CONCEPT.md
 PROJECT_PROPOSAL.md
 doc/implementation-log/*
+doc/dev_ai/*
 
 # Dependencies
 node_modules/
@@ -58,6 +59,11 @@ Desktop.ini
 # AWS
 .aws-sam/
 samconfig.toml
+
+# Lambda build artifacts
+lambdas/**/function.zip
+lambdas/**/response*.json
+lambdas/**/package-lock.json
 
 # Temporary files
 *.tmp
