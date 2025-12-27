@@ -86,8 +86,13 @@ jobs:
               [ -f "$dir/index.mjs" ] || continue
               echo "====> Deploying $(basename $dir)${env_suffix:+ to $env_suffix}..."
               cd "$dir"
-              pnpm install --prod
+              # Use npm for Lambda functions (not part of pnpm workspace)
+              npm install --omit=dev
+              echo "Installed packages:"
+              ls -la node_modules/ | head -20
               zip -r function.zip node_modules index.mjs package.json
+              echo "Zip contents:"
+              unzip -l function.zip | head -20
               aws lambda update-function-code \
                 --function-name "myordering-$(basename $dir)$env_suffix" \
                 --zip-file fileb://function.zip \
@@ -109,8 +114,13 @@ jobs:
                 [ -f "$func_dir/index.mjs" ] || continue
                 echo "====> Deploying $(basename $func_dir)${env_suffix:+ to $env_suffix}..."
                 cd "$func_dir"
-                pnpm install --prod
+                # Use npm for Lambda functions (not part of pnpm workspace)
+                npm install --omit=dev
+                echo "Installed packages:"
+                ls -la node_modules/ | head -20
                 zip -r function.zip node_modules index.mjs package.json
+                echo "Zip contents:"
+                unzip -l function.zip | head -20
                 aws lambda update-function-code \
                   --function-name "myordering-$(basename $func_dir)$env_suffix" \
                   --zip-file fileb://function.zip \
@@ -223,7 +233,7 @@ jobs:
               [ -f "$dir/index.mjs" ] || continue
               echo "Deploying $(basename $dir)$env_suffix..."
               cd "$dir"
-              [ -f "package.json" ] && pnpm install --prod
+              [ -f "package.json" ] && npm install --omit=dev
               zip -r function.zip . -x "*.git*" "*.md" "test/*" "*.test.js"
               aws lambda update-function-code \
                 --function-name "myordering-$(basename $dir)$env_suffix" \
@@ -243,7 +253,7 @@ jobs:
                 [ -f "$func_dir/index.mjs" ] || continue
                 echo "Deploying $(basename $func_dir)$env_suffix..."
                 cd "$func_dir"
-                [ -f "package.json" ] && pnpm install --prod
+                [ -f "package.json" ] && npm install --omit=dev
                 zip -r function.zip . -x "*.git*" "*.md" "test/*" "*.test.js"
                 aws lambda update-function-code \
                   --function-name "myordering-$(basename $func_dir)$env_suffix" \
