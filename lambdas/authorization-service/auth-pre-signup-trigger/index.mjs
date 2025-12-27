@@ -74,7 +74,7 @@ async function checkExistingUser(email) {
   
   // Query users table for existing email
   const result = await sql`
-    SELECT id, email, cognito_sub_id 
+    SELECT id, email, "cognitoSubId" 
     FROM users 
     WHERE email = ${email.toLowerCase()} 
     LIMIT 1
@@ -92,13 +92,13 @@ async function createUserRecord(cognitoSubId, email, name) {
   try {
     const result = await sql`
       INSERT INTO users (
-        cognito_sub_id,
+        "cognitoSubId",
         email,
         name,
-        global_role,
-        is_active,
-        created_at,
-        updated_at
+        "globalRole",
+        "isActive",
+        "createdAt",
+        "updatedAt"
       ) VALUES (
         ${cognitoSubId},
         ${email.toLowerCase()},
@@ -108,7 +108,7 @@ async function createUserRecord(cognitoSubId, email, name) {
         NOW(),
         NOW()
       )
-      RETURNING id, cognito_sub_id, email, name, global_role
+      RETURNING id, "cognitoSubId", email, name, "globalRole"
     `;
     
     console.log('User record created:', result[0]);
@@ -145,15 +145,15 @@ export async function handler(event) {
     
     if (existingUser) {
       // If user exists but doesn't have Cognito sub ID, update it
-      if (!existingUser.cognito_sub_id) {
+      if (!existingUser.cognitoSubId) {
         console.log('Updating existing user with Cognito sub ID:', existingUser.id);
         await sql`
           UPDATE users 
-          SET cognito_sub_id = ${cognitoSubId}, 
-              updated_at = NOW()
+          SET "cognitoSubId" = ${cognitoSubId}, 
+              "updatedAt" = NOW()
           WHERE id = ${existingUser.id}
         `;
-      } else if (existingUser.cognito_sub_id !== cognitoSubId) {
+      } else if (existingUser.cognitoSubId !== cognitoSubId) {
         // Email already registered with different Cognito account
         console.error('Email already registered:', email);
         throw new Error('An account with this email already exists');

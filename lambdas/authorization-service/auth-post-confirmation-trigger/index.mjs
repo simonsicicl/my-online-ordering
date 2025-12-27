@@ -68,11 +68,10 @@ async function activateUser(cognitoSubId, email) {
     const result = await sql`
       UPDATE users 
       SET 
-        is_active = true,
-        email_verified = true,
-        updated_at = NOW()
-      WHERE cognito_sub_id = ${cognitoSubId}
-      RETURNING id, cognito_sub_id, email, name, global_role, is_active
+        "isActive" = true,
+        "updatedAt" = NOW()
+      WHERE "cognitoSubId" = ${cognitoSubId}
+      RETURNING id, "cognitoSubId", email, name, "globalRole", "isActive"
     `;
     
     if (result.length === 0) {
@@ -100,10 +99,10 @@ async function publishUserRegisteredEvent(user) {
     DetailType: 'User.Registered',
     Detail: JSON.stringify({
       userId: user.id,
-      cognitoSubId: user.cognito_sub_id,
+      cognitoSubId: user.cognitoSubId,
       email: user.email,
       name: user.name,
-      globalRole: user.global_role,
+      globalRole: user.globalRole,
       timestamp: new Date().toISOString()
     }),
     EventBusName: eventBusName
