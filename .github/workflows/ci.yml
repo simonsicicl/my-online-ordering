@@ -102,6 +102,8 @@ jobs:
             
             # Nested structure (lambdas/*/*/)
             for service_dir in lambdas/*/; do
+              # Skip if this directory itself is a Lambda (has index.mjs)
+              [ -f "$service_dir/index.mjs" ] && continue
               [ -d "$service_dir" ] || continue
               for func_dir in "$service_dir"*/; do
                 [ -f "$func_dir/index.mjs" ] || continue
@@ -153,6 +155,8 @@ jobs:
             
             # Nested structure
             for service_dir in lambdas/*/; do
+              # Skip if this directory itself is a Lambda (has index.mjs)
+              [ -f "$service_dir/index.mjs" ] && continue
               [ -d "$service_dir" ] || continue
               for func_dir in "$service_dir"*/; do
                 [ -f "$func_dir/index.mjs" ] || continue
@@ -232,6 +236,8 @@ jobs:
             
             # Nested structure
             for service_dir in lambdas/*/; do
+              # Skip if this directory itself is a Lambda (has index.mjs)
+              [ -f "$service_dir/index.mjs" ] && continue
               [ -d "$service_dir" ] || continue
               for func_dir in "$service_dir"*/; do
                 [ -f "$func_dir/index.mjs" ] || continue
@@ -284,6 +290,8 @@ jobs:
             
             # Nested structure
             for service_dir in lambdas/*/; do
+              # Skip if this directory itself is a Lambda (has index.mjs)
+              [ -f "$service_dir/index.mjs" ] && continue
               [ -d "$service_dir" ] || continue
               for func_dir in "$service_dir"*/; do
                 [ -f "$func_dir/index.mjs" ] || continue
