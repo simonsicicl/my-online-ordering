@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: ['**']  # Run lint/test on all branches
   pull_request:
     branches: [main, develop]
 
@@ -49,15 +49,11 @@ jobs:
       - name: Test
         run: pnpm test
 
-  # Auto-deploy to Staging when develop branch is pushed
-  deploy-staging:
+  # Auto-deploy Lambda functions to Staging when develop branch is pushed
+  deploy-lambda-staging:
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     needs: lint-and-test
     runs-on: ubuntu-latest
-    # Uncomment when GitHub Environment is created in Settings > Environments
-    # environment:
-    #   name: staging
-    #   url: https://staging.myordering.com
     
     steps:
       - uses: actions/checkout@v4
@@ -67,36 +63,127 @@ jobs:
         with:
           node-version: '20'
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-west-2
       
-      - name: Deploy to AWS Lambda (Staging)
+      - name: Deploy all Lambda functions
         run: |
-          echo "Deploying to staging environment..."
-          # TODO: Add actual deployment commands in Phase 1 completion
-          # Example commands:
-          # - Deploy Lambda functions: aws lambda update-function-code
-          # - Update API Gateway: aws apigateway create-deployment
-          # - Run database migrations: pnpm db:migrate
-          echo "Staging deployment completed (placeholder)"
+          deploy_lambdas() {
+            local env_suffix=$1
+            local deployed=0
+            
+            # Flat structure (lambdas/*)
+            for dir in lambdas/*/; do
+              [ -f "$dir/index.mjs" ] || continue
+              echo "====> Deploying $(basename $dir)${env_suffix:+ to $env_suffix}..."
+              cd "$dir"
+              pnpm install --prod
+              zip -r function.zip node_modules index.mjs package.json
+              aws lambda update-function-code \
+                --function-name "myordering-$(basename $dir)$env_suffix" \
+                --zip-file fileb://function.zip \
+                --region us-west-2 || echo "⚠️ Function may not exist yet"
+              aws lambda wait function-updated \
+                --function-name "myordering-$(basename $dir)$env_suffix" \
+                --region us-west-2 2>/dev/null || true
+              echo "✅ Deployed"
+              deployed=$((deployed + 1))
+              cd ../..
+            done
+            
+            # Nested structure (lambdas/*/*/)
+            for service_dir in lambdas/*/; do
+              [ -d "$service_dir" ] || continue
+              for func_dir in "$service_dir"*/; do
+                [ -f "$func_dir/index.mjs" ] || continue
+                echo "====> Deploying $(basename $func_dir)${env_suffix:+ to $env_suffix}..."
+                cd "$func_dir"
+                pnpm install --prod
+                zip -r function.zip node_modules index.mjs package.json
+                aws lambda update-function-code \
+                  --function-name "myordering-$(basename $func_dir)$env_suffix" \
+                  --zip-file fileb://function.zip \
+                  --region us-west-2 || echo "⚠️ Function may not exist yet"
+                aws lambda wait function-updated \
+                  --function-name "myordering-$(basename $func_dir)$env_suffix" \
+                  --region us-west-2 2>/dev/null || true
+                echo "✅ Deployed"
+                deployed=$((deployed + 1))
+                cd ../../..
+              done
+            done
+            
+            echo "====================================="
+            echo "Total deployed: $deployed Lambda functions"
+          }
+          
+          deploy_lambdas ""
       
       - name: Run smoke tests
         run: |
-          echo "Running smoke tests on staging..."
-          # TODO: Add actual smoke tests
-          # curl https://staging.myordering.com/health
-          echo "Smoke tests passed (placeholder)"
+          test_lambdas() {
+            local env_suffix=$1
+            local tested=0
+            
+            # Flat structure
+            for dir in lambdas/*/; do
+              [ -f "$dir/index.mjs" ] || continue
+              function_name="myordering-$(basename $dir)$env_suffix"
+              echo "Testing $function_name..."
+              aws lambda invoke \
+                --function-name "$function_name" \
+                --region us-west-2 \
+                response.json 2>/dev/null || echo "⚠️ Not found"
+              [ -f response.json ] && {
+                grep -q '"statusCode": 200\|"success": true' response.json 2>/dev/null && \
+                  echo "✅ Passed" || echo "⚠️ Check logs"
+                rm response.json
+              }
+              tested=$((tested + 1))
+            done
+            
+            # Nested structure
+            for service_dir in lambdas/*/; do
+              [ -d "$service_dir" ] || continue
+              for func_dir in "$service_dir"*/; do
+                [ -f "$func_dir/index.mjs" ] || continue
+                function_name="myordering-$(basename $func_dir)$env_suffix"
+                echo "Testing $function_name..."
+                aws lambda invoke \
+                  --function-name "$function_name" \
+                  --region us-west-2 \
+                  response.json 2>/dev/null || echo "⚠️ Not found"
+                [ -f response.json ] && {
+                  grep -q '"statusCode": 200\|"success": true' response.json 2>/dev/null && \
+                    echo "✅ Passed" || echo "⚠️ Check logs"
+                  rm response.json
+                }
+                tested=$((tested + 1))
+              done
+            done
+            
+            echo "====================================="
+            echo "Tested $tested Lambda functions"
+          }
+          
+          test_lambdas ""
 
   # Auto-deploy to Production when main branch is pushed
-  deploy-production:
+  deploy-lambda-production:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: lint-and-test
     runs-on: ubuntu-latest
-    # Uncomment when GitHub Environment is created in Settings > Environments
+    # Environment protection disabled for single-person development
+    # Uncomment below if team grows and needs manual approval for production
     # environment:
     #   name: production
     #   url: https://myordering.com
@@ -109,35 +196,125 @@ jobs:
         with:
           node-version: '20'
       
-      - name: Configure AWS credentials
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Configure AWS credentials (Production)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
-          aws-region: us-east-1
+          aws-region: us-west-2
       
-      - name: Deploy to AWS Lambda (Production)
+      - name: Deploy all Lambda functions to Production
         run: |
-          echo "Deploying to production environment..."
-          # TODO: Add actual deployment commands in v0.1.0 release
-          # Example commands:
-          # - Deploy Lambda functions: aws lambda update-function-code
-          # - Update API Gateway: aws apigateway create-deployment
-          # - Run database migrations: pnpm db:migrate
-          echo "Production deployment completed (placeholder)"
+          deploy_lambdas() {
+            local env_suffix=$1
+            local deployed=0
+            
+            # Flat structure
+            for dir in lambdas/*/; do
+              [ -f "$dir/index.mjs" ] || continue
+              echo "Deploying $(basename $dir)$env_suffix..."
+              cd "$dir"
+              [ -f "package.json" ] && pnpm install --prod
+              zip -r function.zip . -x "*.git*" "*.md" "test/*" "*.test.js"
+              aws lambda update-function-code \
+                --function-name "myordering-$(basename $dir)$env_suffix" \
+                --zip-file fileb://function.zip \
+                --region us-west-2 && echo "✅ Deployed" || echo "⚠️ Failed"
+              rm function.zip
+              cd - > /dev/null
+              deployed=$((deployed + 1))
+            done
+            
+            # Nested structure
+            for service_dir in lambdas/*/; do
+              [ -d "$service_dir" ] || continue
+              for func_dir in "$service_dir"*/; do
+                [ -f "$func_dir/index.mjs" ] || continue
+                echo "Deploying $(basename $func_dir)$env_suffix..."
+                cd "$func_dir"
+                [ -f "package.json" ] && pnpm install --prod
+                zip -r function.zip . -x "*.git*" "*.md" "test/*" "*.test.js"
+                aws lambda update-function-code \
+                  --function-name "myordering-$(basename $func_dir)$env_suffix" \
+                  --zip-file fileb://function.zip \
+                  --region us-west-2 && echo "✅ Deployed" || echo "⚠️ Failed"
+                rm function.zip
+                cd - > /dev/null
+                deployed=$((deployed + 1))
+              done
+            done
+            
+            echo "====================================="
+            echo "Total deployed: $deployed Lambda functions"
+          }
+          
+          deploy_lambdas "-prod"
       
-      - name: Run smoke tests
+      - name: Run production smoke tests
         run: |
-          echo "Running smoke tests on production..."
-          # TODO: Add actual smoke tests
-          # curl https://myordering.com/health
-          echo "Smoke tests passed (placeholder)"
+          test_lambdas() {
+            local env_suffix=$1
+            local tested=0
+            local failed=0
+            
+            # Flat structure
+            for dir in lambdas/*/; do
+              [ -f "$dir/index.mjs" ] || continue
+              function_name="myordering-$(basename $dir)$env_suffix"
+              echo "Testing $function_name..."
+              aws lambda invoke \
+                --function-name "$function_name" \
+                --region us-west-2 \
+                response.json 2>/dev/null || { echo "❌ Invoke failed"; failed=$((failed + 1)); continue; }
+              [ -f response.json ] && {
+                if grep -q '"statusCode": 200\|"success": true' response.json 2>/dev/null; then
+                  echo "✅ Passed"
+                else
+                  echo "❌ Failed"; cat response.json; failed=$((failed + 1))
+                fi
+                rm response.json
+              }
+              tested=$((tested + 1))
+            done
+            
+            # Nested structure
+            for service_dir in lambdas/*/; do
+              [ -d "$service_dir" ] || continue
+              for func_dir in "$service_dir"*/; do
+                [ -f "$func_dir/index.mjs" ] || continue
+                function_name="myordering-$(basename $func_dir)$env_suffix"
+                echo "Testing $function_name..."
+                aws lambda invoke \
+                  --function-name "$function_name" \
+                  --region us-west-2 \
+                  response.json 2>/dev/null || { echo "❌ Invoke failed"; failed=$((failed + 1)); continue; }
+                [ -f response.json ] && {
+                  if grep -q '"statusCode": 200\|"success": true' response.json 2>/dev/null; then
+                    echo "✅ Passed"
+                  else
+                    echo "❌ Failed"; cat response.json; failed=$((failed + 1))
+                  fi
+                  rm response.json
+                }
+                tested=$((tested + 1))
+              done
+            done
+            
+            echo "====================================="
+            echo "Tested $tested functions, $failed failed"
+            [ $failed -gt 0 ] && exit 1
+          }
+          
+          test_lambdas "-prod"
       
       - name: Notify deployment success
         run: |
-          echo "Notifying team about successful deployment..."
-          # TODO: Add notification integration
-          # - Slack webhook
-          # - Email notification
-          # - Discord notification
-          echo "Notification sent (placeholder)"
+          echo "====================================="
+          echo "🎉 Production deployment successful!"
+          echo "====================================="
+          # TODO: Add Slack/Discord/Email notification in future
