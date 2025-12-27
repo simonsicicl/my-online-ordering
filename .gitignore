@@ -64,6 +64,7 @@ samconfig.toml
 lambdas/**/function.zip
 lambdas/**/response*.json
 lambdas/**/package-lock.json
+lambdas/**/*.zip
 
 # Temporary files
 *.tmp

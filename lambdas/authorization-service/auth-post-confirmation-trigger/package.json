@@ -1,0 +1,16 @@
+{
+  "name": "auth-post-confirmation-trigger",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Cognito Post-Confirmation trigger for user activation and event publishing",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ssm": "^3.699.0",
+    "@aws-sdk/client-eventbridge": "^3.699.0",
+    "drizzle-orm": "^0.30.0",
+    "postgres": "^3.4.3"
+  }
+}
