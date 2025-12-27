@@ -2,7 +2,7 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: ['**']  # Run lint/test on all branches
   pull_request:
     branches: [main, develop]
 
