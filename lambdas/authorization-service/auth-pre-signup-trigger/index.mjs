@@ -92,6 +92,7 @@ async function createUserRecord(cognitoSubId, email, name) {
   try {
     const result = await sql`
       INSERT INTO users (
+        id,
         "cognitoSubId",
         email,
         name,
@@ -100,6 +101,7 @@ async function createUserRecord(cognitoSubId, email, name) {
         "createdAt",
         "updatedAt"
       ) VALUES (
+        ${cognitoSubId}::uuid,
         ${cognitoSubId},
         ${email.toLowerCase()},
         ${name || email.split('@')[0]},
