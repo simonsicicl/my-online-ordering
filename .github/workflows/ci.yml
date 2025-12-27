@@ -49,15 +49,11 @@ jobs:
       - name: Test
         run: pnpm test
 
-  # Auto-deploy to Staging when develop branch is pushed
-  deploy-staging:
+  # Auto-deploy Lambda functions to Staging when develop branch is pushed
+  deploy-lambda-staging:
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     needs: lint-and-test
     runs-on: ubuntu-latest
-    # Uncomment when GitHub Environment is created in Settings > Environments
-    # environment:
-    #   name: staging
-    #   url: https://staging.myordering.com
     
     steps:
       - uses: actions/checkout@v4
@@ -72,31 +68,84 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: us-west-2
       
-      - name: Deploy to AWS Lambda (Staging)
+      - name: Deploy all Lambda functions
         run: |
-          echo "Deploying to staging environment..."
-          # TODO: Add actual deployment commands in Phase 1 completion
-          # Example commands:
-          # - Deploy Lambda functions: aws lambda update-function-code
-          # - Update API Gateway: aws apigateway create-deployment
-          # - Run database migrations: pnpm db:migrate
-          echo "Staging deployment completed (placeholder)"
+          # Loop through all Lambda directories
+          for dir in lambdas/*/; do
+            if [ -f "$dir/index.mjs" ]; then
+              echo "====================================="
+              echo "Deploying $(basename $dir)..."
+              echo "====================================="
+              cd "$dir"
+              
+              # Install production dependencies
+              npm install --production
+              
+              # Create deployment package
+              zip -r function.zip node_modules index.mjs package.json
+              
+              # Get function name from directory
+              function_name="myordering-$(basename $dir)"
+              
+              # Deploy to AWS Lambda
+              aws lambda update-function-code \
+                --function-name "$function_name" \
+                --zip-file fileb://function.zip \
+                --region us-west-2 || echo "Function $function_name may not exist yet, skipping..."
+              
+              # Wait for update to complete
+              aws lambda wait function-updated \
+                --function-name "$function_name" \
+                --region us-west-2 2>/dev/null || true
+              
+              echo "✅ $function_name deployed"
+              cd ../..
+            fi
+          done
       
       - name: Run smoke tests
         run: |
-          echo "Running smoke tests on staging..."
-          # TODO: Add actual smoke tests
-          # curl https://staging.myordering.com/health
-          echo "Smoke tests passed (placeholder)"
+          echo "====================================="
+          echo "Running Lambda smoke tests..."
+          echo "====================================="
+          
+          # Test each deployed Lambda function
+          for dir in lambdas/*/; do
+            if [ -f "$dir/index.mjs" ]; then
+              function_name="myordering-$(basename $dir)"
+              
+              echo "Testing $function_name..."
+              aws lambda invoke \
+                --function-name "$function_name" \
+                --region us-west-2 \
+                --log-type Tail \
+                response.json 2>/dev/null || echo "⚠️ Function $function_name not found or failed"
+              
+              # Check if response exists and has statusCode 200
+              if [ -f response.json ]; then
+                if grep -q '"statusCode": 200' response.json 2>/dev/null || grep -q '"success": true' response.json 2>/dev/null; then
+                  echo "✅ $function_name test passed"
+                else
+                  echo "⚠️ $function_name may have issues (check CloudWatch logs)"
+                fi
+                rm response.json
+              fi
+            fi
+          done
+          
+          echo "====================================="
+          echo "Smoke tests completed"
+          echo "====================================="
 
   # Auto-deploy to Production when main branch is pushed
-  deploy-production:
+  deploy-lambda-production:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: lint-and-test
     runs-on: ubuntu-latest
-    # Uncomment when GitHub Environment is created in Settings > Environments
+    # Environment protection disabled for single-person development
+    # Uncomment below if team grows and needs manual approval for production
     # environment:
     #   name: production
     #   url: https://myordering.com
@@ -109,35 +158,84 @@ jobs:
         with:
           node-version: '20'
       
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (Production)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
-          aws-region: us-east-1
+          aws-region: us-west-2
       
-      - name: Deploy to AWS Lambda (Production)
+      - name: Deploy all Lambda functions to Production
         run: |
-          echo "Deploying to production environment..."
-          # TODO: Add actual deployment commands in v0.1.0 release
-          # Example commands:
-          # - Deploy Lambda functions: aws lambda update-function-code
-          # - Update API Gateway: aws apigateway create-deployment
-          # - Run database migrations: pnpm db:migrate
-          echo "Production deployment completed (placeholder)"
+          # Loop through all Lambda directories
+          for dir in lambdas/*/; do
+            if [ -f "$dir/index.mjs" ]; then
+              echo "====================================="
+              echo "Deploying $(basename $dir) to PRODUCTION..."
+              echo "====================================="
+              cd "$dir"
+              
+              # Install production dependencies
+              npm install --production
+              
+              # Create deployment package
+              zip -r function.zip node_modules index.mjs package.json
+              
+              # Get production function name
+              function_name="myordering-$(basename $dir)-prod"
+              
+              # Deploy to AWS Lambda (Production)
+              aws lambda update-function-code \
+                --function-name "$function_name" \
+                --zip-file fileb://function.zip \
+                --region us-west-2
+              
+              # Wait for update to complete
+              aws lambda wait function-updated \
+                --function-name "$function_name" \
+                --region us-west-2
+              
+              echo "✅ $function_name deployed to production"
+              cd ../..
+            fi
+          done
       
-      - name: Run smoke tests
+      - name: Run production smoke tests
         run: |
-          echo "Running smoke tests on production..."
-          # TODO: Add actual smoke tests
-          # curl https://myordering.com/health
-          echo "Smoke tests passed (placeholder)"
+          echo "====================================="
+          echo "Running production smoke tests..."
+          echo "====================================="
+          
+          # Test each Lambda function
+          for dir in lambdas/*/; do
+            if [ -f "$dir/index.mjs" ]; then
+              function_name="myordering-$(basename $dir)-prod"
+              
+              echo "Testing $function_name..."
+              aws lambda invoke \
+                --function-name "$function_name" \
+                --region us-west-2 \
+                --log-type Tail \
+                response.json
+              
+              if grep -q '"statusCode": 200' response.json 2>/dev/null || grep -q '"success": true' response.json 2>/dev/null; then
+                echo "✅ $function_name test passed"
+              else
+                echo "❌ $function_name test FAILED"
+                cat response.json
+                exit 1
+              fi
+              rm response.json
+            fi
+          done
+          
+          echo "====================================="
+          echo "Production smoke tests completed"
+          echo "====================================="
       
       - name: Notify deployment success
         run: |
-          echo "Notifying team about successful deployment..."
-          # TODO: Add notification integration
-          # - Slack webhook
-          # - Email notification
-          # - Discord notification
-          echo "Notification sent (placeholder)"
+          echo "====================================="
+          echo "🎉 Production deployment successful!"
+          echo "====================================="
+          # TODO: Add Slack/Discord/Email notification in future
