@@ -63,6 +63,11 @@ jobs:
         with:
           node-version: '20'
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -81,7 +86,7 @@ jobs:
               [ -f "$dir/index.mjs" ] || continue
               echo "====> Deploying $(basename $dir)${env_suffix:+ to $env_suffix}..."
               cd "$dir"
-              npm install --production
+              pnpm install --prod
               zip -r function.zip node_modules index.mjs package.json
               aws lambda update-function-code \
                 --function-name "myordering-$(basename $dir)$env_suffix" \
@@ -102,7 +107,7 @@ jobs:
                 [ -f "$func_dir/index.mjs" ] || continue
                 echo "====> Deploying $(basename $func_dir)${env_suffix:+ to $env_suffix}..."
                 cd "$func_dir"
-                npm install --production
+                pnpm install --prod
                 zip -r function.zip node_modules index.mjs package.json
                 aws lambda update-function-code \
                   --function-name "myordering-$(basename $func_dir)$env_suffix" \
@@ -191,6 +196,11 @@ jobs:
         with:
           node-version: '20'
       
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
       - name: Configure AWS credentials (Production)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -209,7 +219,7 @@ jobs:
               [ -f "$dir/index.mjs" ] || continue
               echo "Deploying $(basename $dir)$env_suffix..."
               cd "$dir"
-              [ -f "package.json" ] && npm ci --production
+              [ -f "package.json" ] && pnpm install --prod
               zip -r function.zip . -x "*.git*" "*.md" "test/*" "*.test.js"
               aws lambda update-function-code \
                 --function-name "myordering-$(basename $dir)$env_suffix" \
@@ -227,7 +237,7 @@ jobs:
                 [ -f "$func_dir/index.mjs" ] || continue
                 echo "Deploying $(basename $func_dir)$env_suffix..."
                 cd "$func_dir"
-                [ -f "package.json" ] && npm ci --production
+                [ -f "package.json" ] && pnpm install --prod
                 zip -r function.zip . -x "*.git*" "*.md" "test/*" "*.test.js"
                 aws lambda update-function-code \
                   --function-name "myordering-$(basename $func_dir)$env_suffix" \
