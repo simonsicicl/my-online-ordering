@@ -1,7 +1,7 @@
 # Development Progress
 
-> Last Updated: 2025-12-26  
-> Current: **v0.1.0 Phase 2 Prerequisites Complete** → Ready for Phase 2 Core  
+> Last Updated: 2025-12-28  
+> Current: **v0.1.0 Phase 2 Core - Store Service Complete** → Task 7: API Gateway  
 > SDP Reference: [SOFTWARE_DEVELOPMENT_PLAN.md](doc/SOFTWARE_DEVELOPMENT_PLAN.md)
 
 ---
@@ -9,9 +9,9 @@
 ## 🎯 Next Steps
 
 ### Phase 2 Core Tasks (SDP Week 5-8)
-4. [ ] Cognito User Pool setup
-5. [ ] Authorization Service (3 Lambda functions)
-6. [ ] Store Service (3 Lambda functions)
+4. [x] Cognito User Pool setup
+5. [x] Authorization Service (3 Lambda functions)
+6. [x] Store Service (3 Lambda functions)
 7. [ ] API Gateway routes + authorizers
 
 ---
@@ -66,11 +66,52 @@
 ---
 
 ### Phase 2: Authorization & Store Services
-**Status**: Not started  
-**SDP Reference**: Week 5-8  
-**Estimated Time**: 1-2 weeks
+**Status**: In Progress (75% - 3/4 tasks complete)  
+**Started**: 2025-12-27 | **SDP Reference**: Week 5-8
 
-_Progress will be tracked here..._
+#### ✅ Task 4: Cognito User Pool (Complete)
+- User Pool: myordering-user-pool (us-west-2)
+- App Client: myordering-app-client
+- Attributes: email (verified), custom:globalRole
+- Password Policy: 8+ chars, numbers + special chars required
+
+#### ✅ Task 5: Authorization Service (Complete)
+**Lambda Functions Deployed** (3/3):
+- `myordering-auth-signup-handler` (POST /api/v1/auth/signup)
+  - Cognito user creation + email verification
+  - Users table synchronization
+- `myordering-auth-signin-handler` (POST /api/v1/auth/signin)
+  - Cognito authentication + JWT tokens (access/refresh/id)
+- `myordering-auth-refresh-handler` (POST /api/v1/auth/refresh)
+  - Refresh token validation + new access token
+
+#### ✅ Task 6: Store Service (Complete)
+**Lambda Functions Deployed** (3/3):
+- `myordering-store-get-handler` (GET /api/v1/stores/:id)
+  - Redis caching (10-min TTL, 8x faster: 31ms vs 256ms)
+  - VPC configuration added (initially missing)
+  - Graceful cache degradation
+- `myordering-store-create-handler` (POST /api/v1/stores)
+  - MERCHANT/ADMIN authorization
+  - Slug uniqueness validation (409 Conflict)
+  - EventBridge Store.Created event
+- `myordering-store-update-handler` (PATCH /api/v1/stores/:id)
+  - MANAGER+ authorization
+  - Dynamic UPDATE query
+  - Cache invalidation verified ✅
+  - EventBridge Store.Updated event
+
+**Technical Notes**:
+- All Store Service Lambdas use VPC (for Redis/RDS access)
+- Redis cache hit/miss verified in CloudWatch logs
+- Cache invalidation working correctly (update → cache miss on next GET)
+- Runtime: Node.js 20.x, Timeout: 30s, Memory: 512MB
+
+#### ⏳ Task 7: API Gateway (Not Started)
+- HTTP API routes configuration
+- Lambda authorizer integration
+- CORS configuration
+- Request/response mappings
 
 ---
 
@@ -97,6 +138,7 @@ _Progress will be tracked here..._
 | Phase | SDP Plan | Actual | Status |
 |-------|----------|--------|--------|
 | Phase 1 | 4 weeks | 7 hours | ✅ Complete |
-| Phase 2 | Week 5-8 | TBD | ⏸️ Not Started |
+| Phase 2 (Tasks 4-6) | Week 5-8 | 2 days | ✅ 75% Complete |
+| Phase 2 (Task 7) | Week 5-8 | TBD | ⏳ Next |
 
-**Progress**: Ahead by ~3.5 weeks 🚀
+**Progress**: Significantly ahead of schedule 🚀
