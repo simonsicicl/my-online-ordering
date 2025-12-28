@@ -1,0 +1,11 @@
+{
+  "name": "store-get-handler",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Store Get Handler - Retrieve store information with Redis caching",
+  "main": "index.mjs",
+  "dependencies": {
+    "postgres": "^3.4.7",
+    "ioredis": "^5.3.2"
+  }
+}
