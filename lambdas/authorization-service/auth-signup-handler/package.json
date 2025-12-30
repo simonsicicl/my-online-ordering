@@ -1,0 +1,13 @@
+{
+  "name": "myordering-auth-signup-handler",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "User signup handler using AWS Cognito",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.490.0"
+  }
+}
