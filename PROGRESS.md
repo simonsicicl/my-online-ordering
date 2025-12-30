@@ -1,7 +1,7 @@
 # Development Progress
 
-> Last Updated: 2025-12-28  
-> Current: **v0.1.0 Phase 2 Core - Store Service Complete** → Task 7: API Gateway  
+> Last Updated: 2025-12-30  
+> Current: **v0.1.0 Phase 2 Core Complete** → Ready for Phase 3  
 > SDP Reference: [SOFTWARE_DEVELOPMENT_PLAN.md](doc/SOFTWARE_DEVELOPMENT_PLAN.md)
 
 ---
@@ -10,9 +10,9 @@
 
 ### Phase 2 Core Tasks (SDP Week 5-8)
 4. [x] Cognito User Pool setup
-5. [x] Authorization Service (3 Lambda functions)
+5. [x] Authorization Service (6 Lambda functions)
 6. [x] Store Service (3 Lambda functions)
-7. [ ] API Gateway routes + authorizers
+7. [x] API Gateway routes + authorizers
 
 ---
 
@@ -66,8 +66,8 @@
 ---
 
 ### Phase 2: Authorization & Store Services
-**Status**: In Progress (75% - 3/4 tasks complete)  
-**Started**: 2025-12-27 | **SDP Reference**: Week 5-8
+**Status**: Complete (100% - 4/4 tasks complete)  
+**Started**: 2025-12-27 | **Completed**: 2025-12-30 | **SDP Reference**: Week 5-8
 
 #### ✅ Task 4: Cognito User Pool (Complete)
 - User Pool: myordering-user-pool (us-west-2)
@@ -76,14 +76,31 @@
 - Password Policy: 8+ chars, numbers + special chars required
 
 #### ✅ Task 5: Authorization Service (Complete)
-**Lambda Functions Deployed** (3/3):
+**Lambda Functions Deployed** (6/6):
 - `myordering-auth-signup-handler` (POST /api/v1/auth/signup)
-  - Cognito user creation + email verification
-  - Users table synchronization
+  - Cognito SignUp API integration
+  - Email/password validation
+  - Custom attributes (name, phone, custom:globalRole)
+  - Error handling (duplicate user, invalid password)
 - `myordering-auth-signin-handler` (POST /api/v1/auth/signin)
-  - Cognito authentication + JWT tokens (access/refresh/id)
+  - Cognito InitiateAuth (USER_PASSWORD_AUTH flow)
+  - JWT tokens (access/refresh/id)
+  - Error handling (invalid credentials, unverified email, rate limiting)
 - `myordering-auth-refresh-handler` (POST /api/v1/auth/refresh)
-  - Refresh token validation + new access token
+  - REFRESH_TOKEN_AUTH flow
+  - Returns new access/id tokens
+  - Handles expired/invalid tokens
+- `myordering-auth-pre-signup-trigger` (Cognito trigger)
+  - Pre-signup validation
+- `myordering-auth-post-confirmation-trigger` (Cognito trigger)
+  - User creation in PostgreSQL after email verification
+- `myordering-auth-token-validator` (Lambda authorizer)
+  - JWT validation for API Gateway
+  - Returns IAM policy + user context
+
+**Dependencies**:
+- @aws-sdk/client-cognito-identity-provider: ^3.490.0
+- aws-jwt-verify: ^4.0.1
 
 #### ✅ Task 6: Store Service (Complete)
 **Lambda Functions Deployed** (3/3):
@@ -107,11 +124,39 @@
 - Cache invalidation working correctly (update → cache miss on next GET)
 - Runtime: Node.js 20.x, Timeout: 30s, Memory: 512MB
 
-#### ⏳ Task 7: API Gateway (Not Started)
-- HTTP API routes configuration
-- Lambda authorizer integration
-- CORS configuration
-- Request/response mappings
+#### ✅ Task 7: API Gateway (Complete)
+**Lambda Authorizer**:
+- `myordering-authorizer` - JWT validation with Cognito
+  - Verifies access tokens using aws-jwt-verify
+  - Returns IAM policy (Allow/Deny)
+  - Propagates user context (principalId, email, globalRole)
+  - Authorizer ID: ovaqx9
+
+**API Routes** (6 routes configured):
+
+**Public Endpoints** (no authentication):
+- POST /api/v1/auth/signup → auth-signup-handler
+- POST /api/v1/auth/signin → auth-signin-handler
+- POST /api/v1/auth/refresh → auth-refresh-handler
+- GET /api/v1/stores/{id} → store-get-handler
+
+**Protected Endpoints** (JWT required):
+- POST /api/v1/stores → store-create-handler (MERCHANT/ADMIN)
+- PATCH /api/v1/stores/{id} → store-update-handler (MANAGER+)
+
+**Configuration**:
+- API ID: oq6p23olhh
+- API Endpoint: https://oq6p23olhh.execute-api.us-west-2.amazonaws.com
+- Stage: $default (auto-deploy enabled)
+- CORS: enabled (all origins/methods)
+- Lambda integrations: 6 (all AWS_PROXY type)
+- Invoke permissions: granted for all Lambda functions
+
+**Testing Results**:
+- ✅ Public endpoints accessible
+- ✅ Protected endpoints require valid JWT
+- ✅ Authorization working correctly
+- ✅ User context propagated to handlers
 
 ---
 
@@ -138,7 +183,14 @@
 | Phase | SDP Plan | Actual | Status |
 |-------|----------|--------|--------|
 | Phase 1 | 4 weeks | 7 hours | ✅ Complete |
-| Phase 2 (Tasks 4-6) | Week 5-8 | 2 days | ✅ 75% Complete |
-| Phase 2 (Task 7) | Week 5-8 | TBD | ⏳ Next |
+| Phase 2 | Week 5-8 | 3 days | ✅ Complete |
 
 **Progress**: Significantly ahead of schedule 🚀
+
+**Phase 2 Deliverables**:
+- ✅ 10 Lambda functions deployed
+- ✅ 6 API Gateway routes configured
+- ✅ Authentication & authorization working
+- ✅ Store management CRUD operations
+- ✅ Redis caching (8x performance improvement)
+- ✅ EventBridge events integration
