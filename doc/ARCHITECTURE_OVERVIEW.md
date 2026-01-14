@@ -1,7 +1,7 @@
 # Architecture Overview
 
-**Document Version**: 1.0  
-**Last Updated**: December 21, 2025  
+**Document Version**: 1.1
+**Last Updated**: December 22, 2025  
 **Owner**: Simon Chou  
 **Status**: Living Document (MVP + Inventory + POS Scope)
 
@@ -37,9 +37,10 @@ The My Online Ordering System is a **serverless, event-driven, microservices-bas
 ### Key Characteristics
 
 - **Architecture Style**: Serverless microservices with event-driven communication
-- **Cloud Provider**: AWS (Primary: us-east-1, DR: us-west-2)
+- **Cloud Provider**: AWS (Primary: us-east-1, Single-AZ)
 - **Compute Model**: AWS Lambda (Node.js 20.x)
-- **Database**: Aurora Serverless v2 PostgreSQL (primary) + ElastiCache Redis (cache)
+- **Database**: Amazon RDS for PostgreSQL (db.t3.micro, 20GB storage)
+- **Cache**: ElastiCache Redis
 - **API Gateway**: AWS API Gateway (HTTP + WebSocket)
 - **Event Bus**: AWS EventBridge
 - **Message Queue**: SQS + SNS
@@ -70,7 +71,7 @@ The My Online Ordering System is a **serverless, event-driven, microservices-bas
 ### 1. Serverless-First
 - Prefer managed services over self-managed infrastructure
 - Lambda functions for compute (auto-scaling, pay-per-use)
-- Aurora Serverless v2 for database (auto-scaling capacity)
+- RDS PostgreSQL for database
 - Minimize operational overhead
 
 ### 2. Event-Driven Architecture
@@ -96,13 +97,16 @@ The My Online Ordering System is a **serverless, event-driven, microservices-bas
 - Dead Letter Queues (DLQ) for failed messages
 - Circuit breakers for external dependencies
 - Idempotent operations (using Redis idempotency keys)
+- **Note**: Single-AZ RDS means no automatic failover (acceptable for MVP)
 
 ### 6. Security by Design
 - Authentication via AWS Cognito (JWT tokens)
 - Authorization via RBAC (Role-Based Access Control)
 - Encryption in transit (TLS 1.3) and at rest (AES-256)
 - PCI DSS Level 1 compliance for payment processing
-- Secrets management via AWS Secrets Manager
+- Secrets management via SSM Parameter Store (Standard tier, SecureString encryption)
+- Public RDS with Security Group restrictions (IP allowlisting)
+- API Gateway throttling for rate limiting (no WAF/Shield required for MVP)
 
 ### 7. Observability
 - Centralized logging (CloudWatch Logs)
@@ -120,33 +124,33 @@ The My Online Ordering System is a **serverless, event-driven, microservices-bas
 
 | Service | Responsibility | Key Technologies |
 |---------|---------------|-----------------|
-| **Menu Service** | Product catalog, pricing, images, availability | Lambda, Drizzle ORM, PostgreSQL, Redis, S3 |
-| **Order Service** | Order lifecycle, state machine, coordination | Lambda, Drizzle ORM, PostgreSQL, Step Functions |
-| **Inventory Service** | Stock tracking, reservation, alerts | Lambda, Drizzle ORM, PostgreSQL, Redis |
-| **Payment Service** | Payment processing, reconciliation | Lambda, Drizzle ORM, PostgreSQL, Stripe SDK |
+| **Menu Service** | Product catalog, pricing, images, availability | Lambda, Drizzle ORM, RDS PostgreSQL, Redis, S3 |
+| **Order Service** | Order lifecycle, state machine, coordination | Lambda, Drizzle ORM, RDS PostgreSQL, Step Functions |
+| **Inventory Service** | Stock tracking, reservation, alerts | Lambda, Drizzle ORM, RDS PostgreSQL, Redis |
+| **Payment Service** | Payment processing, reconciliation | Lambda, Drizzle ORM, RDS PostgreSQL, Stripe SDK, SSM Parameter Store |
 
 #### User & Access Management
 
 | Service | Responsibility | Key Technologies |
 |---------|---------------|-----------------|
-| **Authorization Service** | Authentication, RBAC, session management | Cognito, Lambda, Drizzle ORM, PostgreSQL |
-| **User Profile Service** | Customer data, preferences, order history | Lambda, Drizzle ORM, PostgreSQL, Redis |
+| **Authorization Service** | Authentication, RBAC, session management | Cognito, Lambda, Drizzle ORM, RDS PostgreSQL, SSM Parameter Store |
+| **User Profile Service** | Customer data, preferences, order history | Lambda, Drizzle ORM, RDS PostgreSQL, Redis |
 
 #### Operational Services
 
 | Service | Responsibility | Key Technologies |
 |---------|---------------|-----------------|
-| **Store Service** | Restaurant config, hours, delivery rules | Lambda, Drizzle ORM, PostgreSQL, Redis |
-| **Device Service** | Hardware registry, print jobs, health monitoring | Lambda, Drizzle ORM, PostgreSQL, AWS IoT Core, SQS |
-| **Notification Service** | Multi-channel messaging, real-time push | Lambda, Drizzle ORM, PostgreSQL, Redis, WebSocket, SES, SNS |
+| **Store Service** | Restaurant config, hours, delivery rules | Lambda, Drizzle ORM, RDS PostgreSQL, Redis |
+| **Device Service** | Hardware registry, print jobs, health monitoring | Lambda, Drizzle ORM, RDS PostgreSQL, AWS IoT Core, SQS |
+| **Notification Service** | Multi-channel messaging, real-time push | Lambda, Drizzle ORM, RDS PostgreSQL, Redis, WebSocket, SES, SNS |
 
 #### Business Intelligence
 
 **Status**: Out of scope for v0.2.0 (MVP + Inventory + POS)
 
 **Future Services**:
-- CRM Service (Loyalty, coupons, customer segmentation)
-- Report Service (Analytics, dashboards, anomaly detection)
+- CRM Service (Loyalty, coupons, SQL-based recommendations)
+- Report Service (Analytics via direct PostgreSQL queries, dashboards)
 
 **Extensibility**: Order schema includes discount/discountReason fields for future CRM integration.
 
@@ -182,7 +186,7 @@ The My Online Ordering System is a **serverless, event-driven, microservices-bas
 **Flow**:
 ```
 Client → API Gateway → Lambda Authorizer (JWT validation)
-                    → Lambda Handler → RDS Proxy → PostgreSQL
+                    → Lambda Handler → PostgreSQL Connection (Drizzle ORM)
                                     → Response
 ```
 
@@ -190,6 +194,12 @@ Client → API Gateway → Lambda Authorizer (JWT validation)
 - Base URL: `https://api.example.com`
 - Version: `/api/v1/`
 - Resources: `/stores`, `/menu`, `/orders`, etc.
+
+**Connection Management**:
+- Direct Lambda-to-RDS connections via Drizzle ORM
+- Connection pooling handled at application level (Drizzle client)
+- RDS max_connections: 87 (for db.t3.micro)
+- Lambda concurrency limit: 50 (configurable to avoid connection exhaustion)
 
 ### 2. Asynchronous Communication (Event-Driven)
 
@@ -252,14 +262,15 @@ Producer → SQS Queue → Lambda Consumer (long polling)
 | **Language** | TypeScript | 5.x | Type-safe backend development |
 | **ORM** | Drizzle ORM | 0.30.x | Lightweight database access (~5KB, optimized for serverless) |
 | **API Framework** | AWS Lambda | - | Serverless compute |
+| **Secrets Management** | SSM Parameter Store (Standard, SecureString) | - | Free Tier credential storage |
 | **Authentication** | AWS Cognito | - | User management and JWT |
-| **Database** | Aurora Serverless v2 PostgreSQL | 15.x | Primary data store |
+| **Database** | Amazon RDS for PostgreSQL | 15.x | Primary data store (db.t3.micro, 20GB gp2, Single-AZ, Public Subnet) |
 | **Cache** | ElastiCache Redis | 7.x | Caching and temporary data |
 | **Event Bus** | EventBridge | - | Event-driven communication |
 | **Message Queue** | SQS + SNS | - | Asynchronous processing |
 | **State Machine** | Step Functions | - | Order workflow orchestration |
 | **Object Storage** | S3 + CloudFront | - | Image storage and CDN |
-| **Analytics** | Glue + Athena | - | Data lake and SQL analytics |
+| **Analytics** | PostgreSQL (Direct SQL queries) | - | Data lake and SQL analytics |
 
 ### Frontend Layer
 
@@ -282,9 +293,9 @@ Producer → SQS Queue → Lambda Consumer (long polling)
 | **CI/CD** | GitHub Actions | Automated testing and deployment |
 | **Monitoring** | CloudWatch | Metrics, logs, alarms |
 | **Tracing** | X-Ray | Distributed tracing |
-| **Secrets** | Secrets Manager | API keys and credentials |
+| **Secrets** | SSM Parameter Store (Standard, SecureString) | API keys and credentials (Free Tier) |
 | **DNS** | Route 53 | Domain management |
-| **Security** | WAF + Shield | DDoS protection |
+| **Security** | Security Groups + API Gateway Throttling | Network firewall, rate limiting |
 
 ---
 
@@ -303,11 +314,6 @@ Producer → SQS Queue → Lambda Consumer (long polling)
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                  AWS WAF + Shield                            │
-│                  (DDoS Protection, Rate Limiting)            │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
 │               API Gateway (HTTP + WebSocket)                 │
 │              - Lambda Authorizer (JWT)                       │
 │              - Throttling (100 req/s per IP)                 │
@@ -316,34 +322,37 @@ Producer → SQS Queue → Lambda Consumer (long polling)
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
 │                   Lambda Functions                           │
-│         (12 Backend Services, 50+ Functions)                 │
+│         (9 Backend Services, 40+ Functions)                  │
+│         ⚡ Direct DB connections (no VPC required)           │
 └─────────────────────────────────────────────────────────────┘
          ↓                    ↓                    ↓
-┌─────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  RDS Proxy  │    │   EventBridge    │    │   SQS + SNS     │
-│ (Connection │    │   (Event Bus)    │    │ (Message Queue) │
-│   Pooling)  │    └──────────────────┘    └─────────────────┘
-└─────────────┘              ↓
-       ↓                     ↓
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   EventBridge   │    │   SQS + SNS      │    │   S3 + CF       │
+│   (Event Bus)   │    │ (Message Queue)  │    │ (Image Storage) │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+         ↓
 ┌─────────────────────────────────────────────────────────────┐
-│        Aurora Serverless v2 PostgreSQL (Multi-AZ)            │
-│              - Auto-scaling capacity                         │
-│              - ACID compliance                               │
-│              - Point-in-time recovery                        │
+│  ⚡ Amazon RDS for PostgreSQL (Free Tier)                   │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  Instance: db.t3.micro (2 vCPU, 1GB RAM)                    │
+│  Storage: 20GB General Purpose SSD (gp2)                    │
+│  Deployment: Single-AZ (us-east-1a)                         │
+│  Network: PUBLIC SUBNET                                     │
+│  Access: Security Group (IP Allowlist)                      │
+│  Connection: Direct from Lambda (no RDS Proxy)              │
+│  Backup: 7 days automated backups                           │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  REMOVED: RDS Proxy (cost savings)                          │
+│  REMOVED: Multi-AZ failover (cost savings)                  │
+│  REMOVED: Private subnet + NAT Gateway (cost savings)       │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│         ElastiCache Redis (Cluster Mode Enabled)             │
+│         ElastiCache Redis (Cache Tier)                       │
 │              - Caching (menu, store, user profiles)          │
 │              - WebSocket connections                         │
 │              - Idempotency keys                              │
 │              - Inventory locks                               │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│                    S3 + CloudFront                           │
-│              - Image storage (menu photos)                   │
-│              - Data lake (historical analytics)              │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
@@ -354,18 +363,49 @@ Producer → SQS Queue → Lambda Consumer (long polling)
 └─────────────────────────────────────────────────────────────┘
 ```
 
+### Network Architecture
+
+```
+┌──────────────────── VPC (10.0.0.0/16) ────────────────────┐
+│                                                            │
+│  ┌─────────────── Public Subnet (10.0.1.0/24) ─────────┐ │
+│  │                                                       │ │
+│  │  ┌─────────────────────────────────────────────┐    │ │
+│  │  │  ⚡ RDS PostgreSQL (db.t3.micro)           │    │ │
+│  │  │  - Publicly Accessible = TRUE               │    │ │
+│  │  │  - Security Group:                          │    │ │
+│  │  │    * Inbound: Port 5432 from Lambda        │    │ │
+│  │  │    * Inbound: Port 5432 from Dev IPs       │    │ │
+│  │  │    * Outbound: All (for AWS services)      │    │ │
+│  │  └─────────────────────────────────────────────┘    │ │
+│  │                                                       │ │
+│  │  ⚡ NO NAT GATEWAY (Cost Savings)                   │ │
+│  │  ⚡ Direct Internet Gateway for outbound traffic    │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                                                            │
+│  Lambda Functions:                                         │
+│  - NOT in VPC (access RDS via public endpoint)            │
+│  - OR in VPC with Internet Gateway (no NAT cost)          │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+```
+
+**Key Security Measures**:
+1. **Security Group Allowlisting**: Only Lambda security group + specific dev IPs
+2. **SSL/TLS Required**: All connections use TLS 1.3
+3. **IAM Authentication**: Optional RDS IAM auth for enhanced security
+4. **SSM Parameter Store**: Database credentials stored securely (Standard tier, SecureString)
+5. **CloudWatch Alarms**: Monitor failed connection attempts
+
 ### Multi-Region Architecture
 
-**Primary Region**: us-east-1  
-**DR Region**: us-west-2
-
-**Failover Strategy**:
-- Route 53 health checks
-- Aurora Global Database (cross-region replication)
-- S3 cross-region replication
-- Lambda deployment in both regions (dormant in DR)
-- RTO: 4 hours
-- RPO: 1 hour
+**Current Deployment**: Single region only (us-east-1)  
+**Future Production Considerations**:
+- Primary Region: us-east-1  
+- DR Region: us-west-2  
+- Route 53 health checks  
+- RDS read replicas (cross-region)  
+- S3 cross-region replication  
 
 ---
 
@@ -397,9 +437,10 @@ User → Cognito User Pool → JWT Token (RS256)
 **Encryption in Transit**:
 - TLS 1.3 for all HTTPS traffic
 - WebSocket Secure (WSS)
+- **PostgreSQL SSL connections required** ⚡
 
 **Encryption at Rest**:
-- Aurora: AWS KMS encryption
+- RDS: AWS KMS encryption
 - S3: AES-256 server-side encryption
 - ElastiCache: Encryption at rest enabled
 
@@ -407,6 +448,11 @@ User → Cognito User Pool → JWT Token (RS256)
 - Payment Service uses Stripe (PCI DSS Level 1 certified)
 - No credit card data stored in our database
 - Tokenization for saved payment methods
+
+**Network Security**:
+- Security Group: Restrictive inbound rules (only Lambda + dev IPs)
+- Public RDS: SSL required for all connections
+- Security groups provide primary protection
 
 ---
 
@@ -424,7 +470,7 @@ User → Cognito User Pool → JWT Token (RS256)
 3. Order Service (order-create-handler)
    ↓ Validate order items against Menu Service (cache)
    ↓ Reserve inventory (Inventory Service via EventBridge)
-   ↓ Create order record (PostgreSQL via Drizzle ORM)
+   ↓ Create order record (PostgreSQL connection via Drizzle ORM)
    ↓ Publish event: Order.Created
    
 4. EventBridge
@@ -435,14 +481,14 @@ User → Cognito User Pool → JWT Token (RS256)
     ↓ Push WebSocket message to user
     
 5b. Inventory Service
-    ↓ Commit reserved stock
+    ↓ Commit reserved stock (PostgreSQL via Drizzle ORM)
     
 6. Payment Service (async)
    ↓ Process payment via Stripe
    ↓ Publish event: Payment.Success
    
 7. Order Service
-   ↓ Update order status: PENDING → PAID
+   ↓ Update order status: PENDING → PAID (PostgreSQL)
    ↓ Publish event: Order.StatusChanged
    
 8. KDS (Kitchen Display System)
@@ -460,7 +506,7 @@ User → Cognito User Pool → JWT Token (RS256)
    ↓ Lambda Authorizer (verify Merchant role)
    
 3. Menu Service (menu-update-handler)
-   ↓ Update PostgreSQL record
+   ↓ Update PostgreSQL record (connection via Drizzle ORM)
    ↓ Invalidate Redis cache: menu:{storeId}
    ↓ Publish event: Menu.Updated
    
@@ -532,26 +578,26 @@ Device Service (Depends on Store)
 
 | Metric | Target | Measurement |
 |--------|--------|-------------|
-| API Response Time (p95) | < 200ms | CloudWatch |
-| API Response Time (p99) | < 500ms | CloudWatch |
-| Database Query Time (p95) | < 50ms | PostgreSQL logs |
-| Cache Hit Rate | > 80% | Redis metrics |
-| Lambda Cold Start | < 1s | X-Ray |
+| API Response Time (p95) | < 300ms | CloudWatch |
+| API Response Time (p99) | < 800ms | CloudWatch |
+| Database Query Time (p95) | < 100ms | PostgreSQL logs |
+| Cache Hit Rate | > 70% | Redis metrics |
+| Lambda Cold Start | < 1.5s | X-Ray |
 
 ### System Capacity
 
 | Metric | Target |
 |--------|--------|
-| Concurrent Users | 500+ |
-| Orders per Hour | 1000+ |
-| WebSocket Connections | 10,000+ |
-| System Uptime | 99.9% (monthly SLA) |
+| Concurrent Users | 100+ |
+| Orders per Hour | 200+ |
+| WebSocket Connections | 1,000+ |
+| System Uptime | 99.0% (Single-AZ) |
 
 ### Scalability
 
 - **Lambda**: Auto-scales to 1,000 concurrent executions per region
-- **Aurora**: Auto-scales from 0.5 ACU to 128 ACU
-- **Redis**: Cluster mode with 5 shards, 1 replica per shard
+- **RDS**: Manual vertical scaling (upgrade instance type as needed)
+- **Redis**: Single-node ElastiCache
 - **API Gateway**: 10,000 requests per second (regional limit)
 
 ---
@@ -571,6 +617,7 @@ Device Service (Depends on Store)
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-12-21 | Simon Chou | Initial Baseline (Scope: v0.2.0 MVP + Inventory + POS) |
+| **1.1** | **2025-12-22** | **Simon Chou** | **Updated database architecture: Aurora Serverless v2 → RDS PostgreSQL (db.t3.micro, Single-AZ, Public Subnet), Connection model: RDS Proxy → Direct Lambda connections** |
 
 ---
 
