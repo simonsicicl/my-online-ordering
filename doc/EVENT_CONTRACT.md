@@ -385,7 +385,7 @@ Value: "processed"
       "storeId": "550e8400-e29b-41d4-a716-446655440000",
       "userId": "user-456",
       "orderSource": "USER_CLIENT",
-      "orderType": "DELIVERY",
+      "orderType": "TAKEOUT",
       "status": "PENDING",
       "items": [
         {
@@ -400,9 +400,7 @@ Value: "processed"
       ],
       "subtotal": 33.98,
       "tax": 2.72,
-      "deliveryFee": 3.00,
-      "total": 39.70,
-      "deliveryAddress": { ... },
+      "total": 36.70,
       "scheduledPickupTime": "2025-12-17T12:00:00Z",
       "notes": "Please ring doorbell"
     },
@@ -958,9 +956,8 @@ Value: "processed"
     "eventData": {
       "storeId": "550e8400-e29b-41d4-a716-446655440000",
       "storeName": "Joe's Pizza",
-      "updatedFields": ["businessHours", "deliveryZones"],
-      "businessHours": [ ... ],
-      "deliveryZones": [ ... ]
+      "updatedFields": ["businessHours"],
+      "businessHours": [ ... ]
     },
     "metadata": {
       "userId": "user-manager-123",

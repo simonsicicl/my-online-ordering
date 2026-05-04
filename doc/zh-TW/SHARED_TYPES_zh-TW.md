@@ -227,11 +227,9 @@ export interface Order {
   items: OrderItem[];
   subtotal: number; // 以分為單位的金額（例如 15000 = $150.00）
   tax: number; // 以分為單位的金額（例如 1550 = $15.50）
-  deliveryFee: number; // 以分為單位的金額（例如 500 = $5.00）
   discount: number; // 以分為單位的金額（例如 1000 = $10.00）- v0.2.0 的手動 POS 折扣，未來：自動化優惠券計算
   discountReason?: string; // 折扣原因（例如「經理覆蓋」、「忠誠度獎勵」）。擴充性：未來可以存儲優惠券代碼
   total: number; // 以分為單位的金額（例如 16050 = $160.50）
-  deliveryAddress?: Address;
   scheduledPickupTime?: Date;
   notes?: string;
   payment?: Payment;
@@ -253,7 +251,6 @@ export enum OrderSource {
 export enum OrderType {
   DINE_IN = 'DINE_IN',
   TAKEOUT = 'TAKEOUT',
-  DELIVERY = 'DELIVERY',
 }
 
 export enum OrderStatus {
@@ -316,24 +313,6 @@ export interface OrderStatusHistoryEntry {
   timestamp: Date;
   notes?: string;
   changedBy?: string;
-}
-
-/**
- * 地址
- * 外送或帳單地址
- */
-export interface Address {
-  street: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  phone?: string;
-  coordinates?: Coordinates;
-}
-
-export interface Coordinates {
-  lat: number;
-  lng: number;
 }
 ```
 
@@ -442,16 +421,9 @@ export enum UserRole {
  */
 export interface UserProfile {
   userId: string;
-  savedAddresses?: SavedAddress[]; // 在資料庫中存儲為 JSONB
   preferences?: UserPreferences; // 在資料庫中存儲為 JSONB
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface SavedAddress extends Address {
-  id: string;
-  label: string; // 「家」、「公司」等
-  isDefault: boolean;
 }
 
 export interface UserPreferences {
@@ -539,11 +511,10 @@ export interface Store {
   id: string;
   name: string;
   description?: string;
-  address: Address;
+  address: string;
   phone: string;
   email: string;
   businessHours: BusinessHours[];
-  deliveryZones: DeliveryZone[];
   isOpen: boolean;
   acceptingOrders: boolean;
   imageUrl?: string;
@@ -570,12 +541,6 @@ export enum DayOfWeek {
   SUNDAY = 'sunday',
 }
 
-export interface DeliveryZone {
-  id: string;
-  name: string;
-  radius: number; // 以公里為單位
-  deliveryFee: number; // 以分為單位
-}
 ```
 
 ---
@@ -942,7 +907,6 @@ export interface CreateOrderRequest {
   orderSource: OrderSource;
   orderType: OrderType;
   items: CreateOrderItemRequest[];
-  deliveryAddress?: Address;
   scheduledPickupTime?: string; // ISO 8601
   notes?: string;
 }
@@ -1231,10 +1195,7 @@ export interface OrderCreatedEventData {
   items: OrderItem[];
   subtotal: number;
   tax: number;
-  deliveryFee: number;
   total: number;
-  deliveryAddress?: Address;
-  scheduledPickupTime?: string;
   notes?: string;
 }
 

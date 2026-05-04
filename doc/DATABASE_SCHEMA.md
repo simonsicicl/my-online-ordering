@@ -1,8 +1,11 @@
 # Database Schema Specification
 
-**Document Version**: 1.1  
-**Last Updated**: December 22, 2025  
-**Owner**: Simon Chou  
+**Document Version**: 1.0
+
+**Last Updated**: February 1, 2026
+
+**Owner**: Simon Chou
+
 **Status**: Single Source of Truth (MVP + Inventory + POS Scope)
 
 ---
@@ -24,6 +27,9 @@ This document defines the **complete database schema** for the My Online Orderin
 3. [Entity Relationship Diagrams](#entity-relationship-diagrams)
 4. [Index Strategies](#index-strategies)
 5. [Migration Guidelines](#migration-guidelines)
+6. [Redis Cache Patterns](#redis-cache-patterns)
+7. [Data Retention Policies](#data-retention-policies)
+8. [System Architecture & Design Rules](#system-architecture--design-rules)
 
 ---
 
@@ -41,7 +47,7 @@ This document defines the **complete database schema** for the My Online Orderin
 ### Database Configuration
 
 ```
-Host: myordering-db-dev.xxx.us-east-1.rds.amazonaws.com
+Host: myordering-db-dev.xxx.us-west-2.rds.amazonaws.com
 Port: 5432
 Database: myordering
 SSL: Required (rds.force_ssl = 1)
@@ -103,7 +109,7 @@ export const inventoryUnit = pgEnum('InventoryUnit', ['GRAM', 'MILLILITER', 'PIE
 export const inventoryChangeType = pgEnum('InventoryChangeType', ['MANUAL_ADJUSTMENT', 'ORDER_DEDUCTION', 'RESERVATION', 'RELEASE', 'RESTOCK', 'EXPIRATION', 'RETURN']);
 export const staffRole = pgEnum('StaffRole', ['CASHIER', 'LEAD', 'MANAGER', 'MERCHANT']);
 export const orderSource = pgEnum('OrderSource', ['USER_CLIENT', 'KIOSK', 'POS']); // Extensibility: Third-party platforms (UBEREATS, FOODPANDA) can be added in future versions
-export const orderType = pgEnum('OrderType', ['DINE_IN', 'TAKEOUT', 'DELIVERY']);
+export const orderType = pgEnum('OrderType', ['DINE_IN', 'TAKEOUT']);
 export const orderStatus = pgEnum('OrderStatus', ['PENDING', 'PAID', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED', 'REJECTED']);
 export const orderItemType = pgEnum('OrderItemType', ['REGULAR', 'COMBO_PARENT', 'COMBO_CHILD']);
 export const paymentMethod = pgEnum('PaymentMethod', ['CARD', 'CASH', 'LINEPAY', 'APPLE_PAY', 'GOOGLE_PAY']);
@@ -125,11 +131,11 @@ export const stores = pgTable('stores', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
-  address: jsonb('address').notNull(), // { street, city, state, zipCode, coordinates: { lat, lng } }
+  address: text('address').notNull(), 
   phone: varchar('phone', { length: 50 }).notNull(),
   email: varchar('email', { length: 255 }).notNull(),
-  businessHours: jsonb('businessHours').notNull(), // [{ day: "monday", open: "10:00", close: "22:00", isOpen: true }]
-  deliveryZones: jsonb('deliveryZones').notNull(), // [{ id, name, radius, deliveryFee }]
+  // Interface: [{ day: "monday", open: "10:00", close: "22:00", isOpen: true }]
+  businessHours: jsonb('businessHours').notNull(),
   isOpen: boolean('isOpen').default(true).notNull(),
   acceptingOrders: boolean('acceptingOrders').default(true).notNull(),
   imageUrl: varchar('imageUrl', { length: 500 }),
@@ -158,13 +164,11 @@ export const users = pgTable('users', {
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
-  emailIdx: index('idx_users_email').on(table.email),
   globalRoleIdx: index('idx_users_global_role').on(table.globalRole)
 }));
 
 export const userProfiles = pgTable('user_profiles', {
   userId: uuid('userId').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
-  savedAddresses: jsonb('savedAddresses'), // Array of { id, label, street, city, state, postalCode, country, isDefault }
   preferences: jsonb('preferences'), // { notifications: { email: bool, sms: bool, push: bool }, language: 'en' }
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull()
@@ -306,12 +310,12 @@ export const customizationOptions = pgTable('customization_options', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   orderIdx: index('idx_customization_options_order').on(table.customizationId, table.displayOrder),
-  availableIdx: index('idx_customization_options_available').on(table.isAvailable),
   variantIdx: index('idx_customization_options_variant').on(table.variantId)
 }));
 
 export const inventoryItems = pgTable('inventory_items', {
   id: uuid('id').primaryKey().defaultRandom(),
+  storeId: uuid('storeId').notNull().references(() => stores.id, { onDelete: 'cascade' }),
   name: varchar('name', { length: 255 }).notNull(), // "Arabica Coffee Beans", "Whole Milk", "Large Paper Cup"
   description: text('description'),
   sku: varchar('sku', { length: 100 }), // Stock Keeping Unit (unique per store, not globally)
@@ -403,7 +407,7 @@ export const inventoryLogs = pgTable('inventory_logs', {
 
 export const orders = pgTable('orders', {
   id: uuid('id').primaryKey().defaultRandom(),
-  orderNumber: varchar('orderNumber', { length: 50 }).notNull().unique(),
+  orderNumber: varchar('orderNumber', { length: 50 }).notNull().unique(), // Random hash string (e.g., NanoID) to avoid collisions
   storeId: uuid('storeId').notNull().references(() => stores.id, { onDelete: 'restrict' }),
   userId: uuid('userId').notNull(),
   orderSource: orderSource('orderSource').notNull(),
@@ -411,11 +415,9 @@ export const orders = pgTable('orders', {
   status: orderStatus('status').notNull().default('PENDING'),
   subtotal: integer('subtotal').notNull(), // Amount in cents
   tax: integer('tax').notNull(), // Amount in cents
-  deliveryFee: integer('deliveryFee').notNull().default(0), // Amount in cents
   discount: integer('discount').notNull().default(0), // Amount in cents (Manual POS discount for v0.2.0, future: automated coupon calculation)
   discountReason: text('discountReason'), // Reason for discount (e.g., "Manager override", "Loyalty reward"). Extensibility: Can store coupon code in future
   total: integer('total').notNull(), // Amount in cents
-  deliveryAddress: jsonb('deliveryAddress'),
   scheduledPickupTime: timestamp('scheduledPickupTime', { withTimezone: true }),
   notes: text('notes'),
   cancelReason: text('cancelReason'),
@@ -425,8 +427,22 @@ export const orders = pgTable('orders', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   userDateIdx: index('idx_orders_user_date').on(table.userId, table.createdAt),
-  storeStatusDateIdx: index('idx_orders_store_status_date').on(table.storeId, table.status, table.createdAt),
-  statusDateIdx: index('idx_orders_status_date').on(table.status, table.createdAt)
+  storeStatusDateIdx: index('idx_orders_store_status_date').on(table.storeId, table.status, table.createdAt)
+}));
+
+export const orderStatusHistory = pgTable('order_status_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  storeId: uuid('storeId').notNull().references(() => stores.id, { onDelete: 'cascade' }), // Added for efficient store-level querying
+  orderId: uuid('orderId').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  status: orderStatus('status').notNull(),
+  previousStatus: orderStatus('previousStatus'), // Nullable for initial status
+  changedBy: uuid('changedBy'), // User ID of who made the change (system or staff)
+  reason: text('reason'),
+  createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  storeIdx: index('idx_order_status_history_store').on(table.storeId, table.createdAt),
+  orderIdx: index('idx_order_status_history_order').on(table.orderId, table.createdAt),
+  statusIdx: index('idx_order_status_history_status').on(table.status)
 }));
 
 export const orderItems = pgTable('order_items', {
@@ -443,6 +459,19 @@ export const orderItems = pgTable('order_items', {
   priceAtOrder: integer('priceAtOrder').notNull(), // Snapshot: MenuItem.price + modifier deltas in cents
   costAtOrder: integer('costAtOrder').notNull(),  // Snapshot: Calculated COGS from Recipe × InventoryItem.costPerUnit in cents
   customizations: jsonb('customizations'), // 🔴 CRITICAL: Used by ALL item types (REGULAR, COMBO_PARENT, COMBO_CHILD)
+   /**
+   * Interface: Array<{
+   *   customizationId: string;
+   *   name: string; // "Size"
+   *   type: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE';
+   *   selectedOptions: Array<{
+   *     id: string; // customization_option_id
+   *     name: string; // "Large"
+   *     priceDelta: number; // 50
+   *     variantId?: string; // "var-l" (Snapshot for recipe execution)
+   *   }>
+   * }>
+   */
   specialInstructions: text('specialInstructions'),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
@@ -464,7 +493,8 @@ export const payments = pgTable('payments', {
   method: paymentMethod('method').notNull(), // CARD, CASH, LINEPAY, APPLE_PAY, GOOGLE_PAY
   status: paymentStatus('status').notNull().default('PENDING'), // PENDING, PAID, FAILED, REFUNDED, PARTIALLY_REFUNDED
   providerTransactionId: varchar('providerTransactionId', { length: 255 }), // Stripe payment intent ID, LinePay transaction ID, etc.
-  metadata: jsonb('metadata'), // Provider-specific data: { cashReceived?, changeGiven?, cardLast4?, terminalId? }
+  // Interface: { cashReceived?: number, changeGiven?: number, cardLast4?: string, cardBrand?: string, terminalId?: string }
+  metadata: jsonb('metadata'), 
   paidAt: timestamp('paidAt', { withTimezone: true }),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull()
@@ -504,7 +534,8 @@ export const devices = pgTable('devices', {
   macAddress: varchar('macAddress', { length: 17 }), // MAC address for device identification
   serialNumber: varchar('serialNumber', { length: 100 }),
   firmwareVersion: varchar('firmwareVersion', { length: 50 }),
-  metadata: jsonb('metadata'), // Device-specific configuration: { model?, manufacturer?, capabilities? }
+  // Interface: { model?: string, manufacturer?: string, capabilities?: string[], config?: Record<string, any> }
+  metadata: jsonb('metadata'), 
   lastSeen: timestamp('lastSeen', { withTimezone: true }), // Last heartbeat timestamp
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull()
@@ -545,7 +576,8 @@ export const notifications = pgTable('notifications', {
   recipient: varchar('recipient', { length: 255 }).notNull(), // Email address, phone number, device token, or WebSocket connectionId
   subject: varchar('subject', { length: 255 }),
   message: text('message').notNull(),
-  metadata: jsonb('metadata'), // Additional context: { orderId?, storeId?, actionUrl? }
+  // Interface: { orderId?: string, storeId?: string, actionUrl?: string, priority?: 'high'|'normal', templateId?: string }
+  metadata: jsonb('metadata'), 
   sentAt: timestamp('sentAt', { withTimezone: true }),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
@@ -556,9 +588,10 @@ export const notifications = pgTable('notifications', {
 
 // ==========================================
 // CRM & LOYALTY ENTITIES
-// ==========================================
-// Out of scope for v0.2.0 (MVP + Inventory + POS)
-// Future modules: Loyalty Points, Coupons, Customer Tiers, Referrals
+// Reserved for v0.3.0 (Future Module)
+// NOTE: These tables are intentionally omitted in the current MVP scope to avoid over-engineering.
+// Future modules will include: Loyalty Points, Coupons, Customer Tiers, Referrals.
+// Extensibility Hook: Orders.discount and Orders.discountReason fields serve as placeholders for future coupon integration.
 // Extensibility: Orders.discount and Orders.discountReason fields serve as hooks for future coupon integration
 
 // ==========================================
@@ -603,7 +636,7 @@ export const storeStaff = pgTable('store_staff', {
 │─────────────────│
 │ id (PK)         │
 │ name            │
-│ address (JSON)  │
+│ address (text)  │
 │ businessHours   │
 └────────┬────────┘
          │
@@ -785,7 +818,6 @@ All tables have primary key indexes automatically created on `id` columns.
 -- Orders - frequent queries by user and store
 CREATE INDEX idx_orders_user_date ON orders (user_id, created_at DESC);
 CREATE INDEX idx_orders_store_status_date ON orders (store_id, status, created_at DESC);
-CREATE INDEX idx_orders_status_date ON orders (status, created_at DESC);
 
 -- Menu Items - catalog browsing
 CREATE INDEX idx_menu_items_store_category ON menu_items (store_id, category_id, is_available);
@@ -794,7 +826,6 @@ CREATE INDEX idx_menu_items_availability ON menu_items (is_available, is_deleted
 -- Menu Customizations - options lookup
 CREATE INDEX idx_customizations_item_order ON menu_item_customizations (menu_item_id, display_order);
 CREATE INDEX idx_customization_options_order ON customization_options (customization_id, display_order);
-CREATE INDEX idx_customization_options_available ON customization_options (is_available);
 CREATE INDEX idx_customization_options_variant ON customization_options (variant_id);
 
 -- Combo Groups - combo management (for MenuItem where isCombo = true)
@@ -1003,13 +1034,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
 
 ---
 
-## Version History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2025-12-21 | Simon Chou | Initial Baseline (Scope: v0.2.0 MVP + Inventory + POS) |
-
-### General Guidelines
+## System Architecture & Design Rules
 
 1. **Drizzle ORM**: Use `drizzle-orm` for type-safe database access with minimal overhead (~5KB vs Prisma's ~20MB)
 2. **Transactions**: Use Drizzle transactions (`db.transaction()`) for multi-table operations
@@ -1020,14 +1045,14 @@ WHERE created_at < NOW() - INTERVAL '3 months';
 
 ### Menu Item & Combo Management
 
-6. **Combo Definition**: MenuItem with `isCombo: true` represents a Set Meal (e.g., "Burger Combo"). It has `comboGroups` that define selectable components (e.g., "Choose Main", "Choose Side", "Choose Drink").
+7. **Combo Definition**: MenuItem with `isCombo: true` represents a Set Meal (e.g., "Burger Combo"). It has `comboGroups` that define selectable components (e.g., "Choose Main", "Choose Side", "Choose Drink").
 
-7. **Order Item Types** (Self-Referencing Pattern):
+8. **Order Item Types** (Self-Referencing Pattern):
    - `REGULAR`: Standard single item order (e.g., "Classic Burger")
    - `COMBO_PARENT`: Virtual container for a combo order - holds the combo's total price but does NOT consume inventory
    - `COMBO_CHILD`: Actual component of a combo (e.g., "Classic Burger" inside "Burger Combo") - THIS consumes inventory
    
-8. **Combo Order Structure Example**:
+9. **Combo Order Structure Example**:
    ```typescript
    // Order for "Burger Combo" ($150.00) with Classic Burger + Large Fries (upgrade +$10.00) + Coke
    [
@@ -1079,7 +1104,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
    // Total Order: $150.00 (COMBO_PARENT) + $10.00 (upgrade) = $160.00
    ```
 
-9. **Query with Relations**: When querying MenuItem with Drizzle, use joins or relational queries:
+10. **Query with Relations**: When querying MenuItem with Drizzle, use joins or relational queries:
    ```typescript
    // Using Drizzle relational queries
    const item = await db.query.menuItems.findFirst({
@@ -1095,7 +1120,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
    });
    ```
 
-10. **Inventory Deduction Logic** (CRITICAL):
+11. **Inventory Deduction Logic** (CRITICAL):
     ```typescript
     // When processing an order, iterate through order_items:
     for (const item of orderItems) {
@@ -1111,13 +1136,13 @@ WHERE created_at < NOW() - INTERVAL '3 months';
     }
     ```
 
-11. **Combo Defaults**: Each ComboGroup must have exactly one item with `isDefault: true`
+12. **Combo Defaults**: Each ComboGroup must have exactly one item with `isDefault: true`
 
-12. **Combo Validation**: Validate that customer selections meet minSelections/maxSelections constraints for each group
+13. **Combo Validation**: Validate that customer selections meet minSelections/maxSelections constraints for each group
 
-13. **Price Delta**: `priceDelta` field represents price adjustment (positive for upgrade, negative for discount, 0 for no change)
+14. **Price Delta**: `priceDelta` field represents price adjustment (positive for upgrade, negative for discount, 0 for no change)
 
-14. **Analytics with JSONB Customizations**: Use PostgreSQL's `jsonb_array_elements()` to analyze topping/modifier sales:
+15. **Analytics with JSONB Customizations**: Use PostgreSQL's `jsonb_array_elements()` to analyze topping/modifier sales:
     ```sql
     -- Example: Count "No Onion" selections across all orders
     SELECT 
@@ -1130,11 +1155,11 @@ WHERE created_at < NOW() - INTERVAL '3 months';
 
 ### Inventory & Recipe System (Recipe-Driven Architecture)
 
-15. **Multi-Tenant Inventory Isolation**: InventoryItem MUST include `storeId` to isolate inventory per store. Updating "Milk" stock should only affect the specific store's inventory, not globally across all stores.
+16. **Multi-Tenant Inventory Isolation**: InventoryItem MUST include `storeId` to isolate inventory per store. Updating "Milk" stock should only affect the specific store's inventory, not globally across all stores.
 
-16. **Decoupling Philosophy**: MenuItem does NOT directly link to inventory. All stock consumption is defined through the `Recipe` model.
+17. **Decoupling Philosophy**: MenuItem does NOT directly link to inventory. All stock consumption is defined through the `Recipe` model.
 
-16.5. **Fully Isolated Store-Scoped Variant Architecture**:
+18. **Fully Isolated Store-Scoped Variant Architecture**:
     - **Design Philosophy**: Every variant record strictly belongs to a specific store (`storeId NOT NULL`)
     - **No Global Variants**: There are NO shared "system" variants in the database
     - **Application-Layer Seeding**: When a new store is created, the backend automatically seeds common variants (from templates) into the `variants` table within that store's scope
@@ -1159,7 +1184,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
       - Store isolation (Store A's changes don't affect Store B)
       - Referential integrity (deleting a variant cascades properly)
 
-17. **Recipe Conditions Architecture** (Effect vs. Cause Separation):
+19. **Recipe Conditions Architecture** (Effect vs. Cause Separation):
     - **Recipe Table**: Defines the "Effect" (WHAT inventory to deduct)
       - `menuItemId`: Nullable. If NULL = global recipe, if SET = scoped to specific menu item
       - `inventoryItemId`: Which raw ingredient is consumed
@@ -1191,7 +1216,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
       - Can be applied to any menu item
       - Still respects recipe_conditions (can be conditional or unconditional)
 
-18. **Recipe Evaluation Logic** (Composite Condition Matching with AND Logic):
+20. **Recipe Evaluation Logic** (Composite Condition Matching with AND Logic):
     - **Problem**: Real-world recipes require composite conditions (e.g., "Large Hot Latte" needs different milk amount than "Large Iced Latte")
     - **Solution**: Separate Effect (recipes table) from Cause (recipe_conditions table) with AND logic support
     - **Execution Flow**:
@@ -1238,7 +1263,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
       2. AND ALL linked `recipe_conditions` are satisfied (i.e., all required variants are present in variantContext)
       3. Note: If a recipe has NO conditions, it is treated as a Base Recipe and executes automatically
 
-19. **Variant Code Examples (variants.code)**:
+21. **Variant Code Examples (variants.code)**:
     - **IMPORTANT**: These codes are **auto-generated by backend** and **hidden from users**
     - **Purpose**: Internal system logic, uniqueness within store scope, debugging
     - **Format**: Typically `category_name_randomstring` (e.g., `"size_small_a1b2"`, `"temp_hot_x7y9"`)
@@ -1253,7 +1278,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
       - RecipeCondition.variantId → Variant.id (NEW in V1.5)
       - Type-safe FKs ensure data integrity, NOT magic string matching
 
-20. **Modifier Option Default Logic**:
+22. **Modifier Option Default Logic**:
     - `isDefault: true` means this option is selected by default
     - For "removable" modifiers (e.g., "No Green Onion"), the default option has a recipe, the removal option has NO recipe
     - Example:
@@ -1263,7 +1288,7 @@ WHERE created_at < NOW() - INTERVAL '3 months';
       - Option 2: "No Green Onion" (isDefault: false, NO recipe)
       ```
 
-21. **Recipe Scoping** (V1.5 Architecture):
+23. **Recipe Scoping** (V1.5 Architecture):
     - **Nullable menuItemId**: The `menuItemId` field determines recipe scope
       - **NULL**: Global Recipe - can be applied to any menu item (e.g., "Add Pearl" modifier)
       - **SET**: Scoped Recipe - applies only to the specified menu item
@@ -1272,9 +1297,9 @@ WHERE created_at < NOW() - INTERVAL '3 months';
       - Zero conditions = Base Recipe (unconditional)
       - One+ conditions = Conditional Recipe (ALL must be met - AND logic)
 
-22. **Inventory Units**: Use the `InventoryUnit` enum (GRAM, MILLILITER, PIECE, KILOGRAM, LITER) for precise quantity tracking with 3 decimal places.
+24. **Inventory Units**: Use the `InventoryUnit` enum (GRAM, MILLILITER, PIECE, KILOGRAM, LITER) for precise quantity tracking with 3 decimal places.
 
-23. **Stock Reservation Flow with Recipe Conditions (V1.5)**:
+25. **Stock Reservation Flow with Recipe Conditions (V1.5)**:
     ```typescript
     import { db } from './db'; // Drizzle instance
     import { inventoryItems, recipes, recipeConditions } from './schema';
@@ -1362,9 +1387,9 @@ WHERE created_at < NOW() - INTERVAL '3 months';
     }
     ```
 
-24. **Low Stock Alerts**: Query `inventoryItems` where `currentStock <= minStock` AND `storeId = <current_store>` to trigger store-specific restocking notifications.
+26. **Low Stock Alerts**: Query `inventoryItems` where `currentStock <= minStock` AND `storeId = <current_store>` to trigger store-specific restocking notifications.
 
-25. **Cost Tracking & Financial Snapshots**: 
+27. **Cost Tracking & Financial Snapshots**: 
     - Use `InventoryItem.costPerUnit` to calculate COGS (Cost of Goods Sold) for each order.
     - **CRITICAL**: Snapshot both `priceAtOrder` and `costAtOrder` in the `order_items` table to preserve financial accuracy:
       - `priceAtOrder`: MenuItem.price + sum of selected modifier `priceDelta` values at order creation time
@@ -1620,17 +1645,17 @@ RecipeCondition { id: "rc-bl-2", recipeId: "recipe-bl", variantId: "var-l" }
 
 ### Data Types & Precision
 
-21. **Enums**: Use PostgreSQL enums via Drizzle's `pgEnum` for type safety (OrderStatus, PaymentMethod, CustomizationType, InventoryUnit, InventoryChangeType, etc.)
-22. **Timestamps**: Use `timestamp('column', { mode: 'string', withTimezone: true })` for timezone-aware timestamps
-23. **UUIDs**: Use `uuid('id').defaultRandom()` for proper UUID generation in PostgreSQL
-24. **Decimal Precision**: 
-    - Monetary values: `decimal('price', { precision: 10, scale: 2 })` (e.g., $12.99)
+28. **Enums**: Use PostgreSQL enums via Drizzle's `pgEnum` for type safety (OrderStatus, PaymentMethod, CustomizationType, InventoryUnit, InventoryChangeType, etc.)
+29. **Timestamps**: Use `timestamp('column', { mode: 'string', withTimezone: true })` for timezone-aware timestamps
+30. **UUIDs**: Use `uuid('id').defaultRandom()` for proper UUID generation in PostgreSQL
+31. **Decimal Precision**: 
+    - Monetary values: `integer('price')` (stored in cents, e.g., 1299 = $12.99) - **Changed to Integer for accuracy**
     - Inventory quantities: `decimal('quantity', { precision: 10, scale: 3 })` (e.g., 150.5g, 700.25ml)
     - Cost per unit: `decimal('cost', { precision: 10, scale: 4 })` (for precise cost tracking)
 
 ### Display & Ordering
 
-25. **Display Order**: Respect `displayOrder` fields when rendering:
+32. **Display Order**: Respect `displayOrder` fields when rendering:
     - Customizations
     - CustomizationOptions
     - ComboGroups
@@ -1641,6 +1666,5 @@ RecipeCondition { id: "rc-bl-2", recipeId: "recipe-bl", variantId: "var-l" }
 ## Version History
 
 | Version | Date | Author | Changes |
-|---------|------|--------|---------|------|
-| 1.0 | 2025-12-21 | Simon Chou | Initial Baseline (Scope: v0.2.0 MVP + Inventory + POS) |
-| **1.1** | **Dec 22, 2025** | Simon Chou | **Architecture pivot to AWS Free Tier RDS PostgreSQL (db.t3.micro, Public Subnet, Direct Lambda connections)** |
+|------|------|------|------|
+| **1.0** | **2026-02-01** | **Simon Chou** | **Initial Baseline (Scope: v0.2.0 MVP + Inventory + POS).** |

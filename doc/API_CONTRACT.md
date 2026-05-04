@@ -431,7 +431,7 @@ X-RateLimit-Reset: 1702809600 (Unix timestamp)
 {
   "storeId": "550e8400-e29b-41d4-a716-446655440000",
   "orderSource": "USER_CLIENT",
-  "orderType": "DELIVERY",
+  "orderType": "TAKEOUT",
   "items": [
     {
       "menuItemId": "item-1",
@@ -445,13 +445,6 @@ X-RateLimit-Reset: 1702809600 (Unix timestamp)
       "specialInstructions": "Extra cheese"
     }
   ],
-  "deliveryAddress": {
-    "street": "123 Main St",
-    "city": "New York",
-    "state": "NY",
-    "zipCode": "10001",
-    "phone": "+1234567890"
-  },
   "scheduledPickupTime": "2025-12-17T12:00:00Z",
   "notes": "Please ring doorbell"
 }
@@ -467,16 +460,14 @@ X-RateLimit-Reset: 1702809600 (Unix timestamp)
     "storeId": "550e8400-e29b-41d4-a716-446655440000",
     "userId": "user-456",
     "orderSource": "USER_CLIENT",
-    "orderType": "DELIVERY",
+    "orderType": "TAKEOUT",
     "status": "PENDING",
     "items": [ ... ],
     "subtotal": 29.98,
     "tax": 2.40,
-    "deliveryFee": 3.00,
     "discount": 0.00,
     "discountReason": null,
-    "total": 35.38,
-    "deliveryAddress": { ... },
+    "total": 32.38,
     "scheduledPickupTime": "2025-12-17T12:00:00Z",
     "notes": "Please ring doorbell",
     "createdAt": "2025-12-17T10:45:00Z",
@@ -489,7 +480,6 @@ X-RateLimit-Reset: 1702809600 (Unix timestamp)
 **Validation**:
 - All menu items must exist and be available
 - Inventory must be sufficient (checked via Inventory Service)
-- Delivery address required for DELIVERY orders
 - Scheduled pickup time must be in future
 
 **Events Published**: `Order.Created`
@@ -530,7 +520,7 @@ X-RateLimit-Reset: 1702809600 (Unix timestamp)
     "storeId": "550e8400-e29b-41d4-a716-446655440000",
     "userId": "user-456",
     "orderSource": "USER_CLIENT",
-    "orderType": "DELIVERY",
+    "orderType": "TAKEOUT",
     "status": "PREPARING",
     "items": [
       {
@@ -546,8 +536,7 @@ X-RateLimit-Reset: 1702809600 (Unix timestamp)
     ],
     "subtotal": 33.98,
     "tax": 2.72,
-    "deliveryFee": 3.00,
-    "total": 39.70,
+    "total": 36.70,
     "payment": {
       "id": "payment-789",
       "status": "PAID",
@@ -555,7 +544,6 @@ X-RateLimit-Reset: 1702809600 (Unix timestamp)
       "last4": "4242",
       "paidAt": "2025-12-17T10:46:00Z"
     },
-    "deliveryAddress": { ... },
     "scheduledPickupTime": "2025-12-17T12:00:00Z",
     "statusHistory": [
       { "status": "PENDING", "timestamp": "2025-12-17T10:45:00Z" },
@@ -1178,17 +1166,6 @@ PENDING → PAID → PREPARING → READY → COMPLETED
     "email": "john@example.com",
     "name": "John Doe",
     "phone": "+1234567890",
-    "savedAddresses": [
-      {
-        "id": "addr-1",
-        "label": "Home",
-        "street": "123 Main St",
-        "city": "New York",
-        "state": "NY",
-        "zipCode": "10001",
-        "isDefault": true
-      }
-    ],
     "preferences": {
       "notifications": {
         "email": true,
@@ -1312,16 +1289,7 @@ PENDING → PAID → PREPARING → READY → COMPLETED
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "Joe's Pizza",
     "description": "Best pizza in town",
-    "address": {
-      "street": "456 Main St",
-      "city": "New York",
-      "state": "NY",
-      "zipCode": "10002",
-      "coordinates": {
-        "lat": 40.7128,
-        "lng": -74.0060
-      }
-    },
+    "address": "456 Main St, New York, NY 10002",
     "phone": "+1234567890",
     "email": "contact@joespizza.com",
     "businessHours": [
@@ -1330,14 +1298,6 @@ PENDING → PAID → PREPARING → READY → COMPLETED
         "open": "10:00",
         "close": "22:00",
         "isOpen": true
-      }
-    ],
-    "deliveryZones": [
-      {
-        "id": "zone-1",
-        "name": "Downtown",
-        "radius": 5.0,
-        "deliveryFee": 3.00
       }
     ],
     "isOpen": true,
@@ -1369,20 +1329,10 @@ PENDING → PAID → PREPARING → READY → COMPLETED
 {
   "name": "Joe's Pizza",
   "description": "Best pizza in town",
-  "address": {
-    "street": "456 Main St",
-    "city": "New York",
-    "state": "NY",
-    "zipCode": "10002",
-    "coordinates": {
-      "lat": 40.7128,
-      "lng": -74.0060
-    }
-  },
+  "address": "456 Main St, New York, NY 10002",
   "phone": "+1234567890",
   "email": "contact@joespizza.com",
-  "businessHours": [ ... ],
-  "deliveryZones": [ ... ]
+  "businessHours": [ ... ]
 }
 ```
 
@@ -1455,7 +1405,7 @@ PENDING → PAID → PREPARING → READY → COMPLETED
   "storeId": "550e8400-e29b-41d4-a716-446655440000",
   "deviceType": "RECEIPT_PRINTER",
   "name": "Kitchen Printer",
-  "iotEndpoint": "a1b2c3d4e5f6g7.iot.us-east-1.amazonaws.com",
+  "iotEndpoint": "a1b2c3d4e5f6g7.iot.us-west-2.amazonaws.com",
   "certificateId": "cert-123456"
 }
 ```
