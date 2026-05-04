@@ -1,0 +1,112 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # Run tests for all branches
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Lint
+        run: pnpm lint
+      
+      - name: Build
+        run: pnpm build
+      
+      - name: Test
+        run: pnpm test
+      
+      - name: Generate coverage report
+        run: pnpm test:coverage
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Auto-deploy to Staging only for develop branch
+  deploy-staging:
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.myordering.com
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Deploy to AWS Lambda (Staging)
+        run: |
+          # Deploy Lambda functions
+          # Update API Gateway
+          # Run database migrations
+          echo "Deploying to staging..."
+      
+      - name: Run smoke tests
+        run: |
+          # Verify staging environment
+          curl https://staging.myordering.com/health
+
+  # Auto-deploy to Production only for main branch
+  deploy-production:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: lint-and-test
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://myordering.com
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+          aws-region: us-east-1
+      
+      - name: Deploy to AWS Lambda (Production)
+        run: |
+          # Deploy Lambda functions
+          # Update API Gateway
+          # Run database migrations
+          echo "Deploying to production..."
+      
+      - name: Run smoke tests
+        run: |
+          # Verify production environment
+          curl https://myordering.com/health
+      
+      - name: Notify deployment success
+        run: |
+          # Send Slack notification or email
+          echo "Production deployment successful"

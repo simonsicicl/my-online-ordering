@@ -1,0 +1,426 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  My Online Ordering System — Foundation Stack
+  Provisions all shared infrastructure: VPC, RDS, Redis, Cognito, EventBridge, S3.
+  Deploy this FIRST before any service stack.
+  Re-running this template on a new account recreates everything from scratch.
+
+Parameters:
+  AppEnv:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+    Default: dev
+
+  # DB master password — passed in at deploy time, never hardcoded
+  DBMasterPassword:
+    Type: String
+    NoEcho: true
+
+  # Cognito — email used for system-generated emails (password reset, etc.)
+  SESFromEmail:
+    Type: String
+    Default: noreply@myonlineordering.com
+
+Resources:
+
+  # ── VPC ───────────────────────────────────────────────────────────────────
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "myordering-vpc-${AppEnv}"
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs ""]
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnet2RouteTableAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  # ── SECURITY GROUPS ───────────────────────────────────────────────────────
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref VPC
+      # Lambdas need outbound to RDS and Redis
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS PostgreSQL
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ElastiCache Redis
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  # ── RDS POSTGRESQL ────────────────────────────────────────────────────────
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot   # Creates a snapshot before deletion — protects data
+    Properties:
+      DBInstanceIdentifier: !Sub "myordering-db-${AppEnv}"
+      DBInstanceClass: db.t3.micro
+      Engine: postgres
+      EngineVersion: "15.4"
+      MasterUsername: dbadmin
+      MasterUserPassword: !Ref DBMasterPassword
+      DBName: myordering
+      AllocatedStorage: "20"
+      StorageType: gp2
+      StorageEncrypted: true
+      MultiAZ: false                 # false for dev/staging (cost reason)
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      BackupRetentionPeriod: 7
+      Tags:
+        - Key: Environment
+          Value: !Ref AppEnv
+
+  # ── ELASTICACHE REDIS ─────────────────────────────────────────────────────
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnet group for Redis
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      ClusterName: !Sub "myordering-redis-${AppEnv}"
+      CacheNodeType: cache.t3.micro
+      Engine: redis
+      EngineVersion: "7.0"
+      NumCacheNodes: 1
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RedisSecurityGroup
+
+  # ── COGNITO ───────────────────────────────────────────────────────────────
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub "myordering-user-pool-${AppEnv}"
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Required: true
+          Mutable: true
+        - Name: globalRole
+          AttributeDataType: String
+          Required: false
+          Mutable: true
+      # JWT tokens: 1hr access, 30d refresh
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "myordering-client-${AppEnv}"
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false         # false = usable from browser/mobile
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  # ── EVENTBRIDGE ───────────────────────────────────────────────────────────
+
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub "my-ordering-system-event-bus-${AppEnv}"
+
+  # Dead letter queue for failed event deliveries
+  EventDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "event-processing-dlq-${AppEnv}"
+      MessageRetentionPeriod: 1209600   # 14 days
+
+  # ── S3 (ASSETS) ───────────────────────────────────────────────────────────
+
+  AssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "myordering-assets-${AppEnv}-${AWS::AccountId}"
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ["*"]
+            AllowedMethods: [GET, PUT, POST]
+            AllowedOrigins: ["*"]
+            MaxAge: 3600
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # ── SSM PARAMETERS (non-secret — written by this stack) ──────────────────
+  # Secrets (DB password, Stripe keys) are written by bootstrap-ssm.ps1
+
+  SSMDBHost:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/db/host"
+      Type: String
+      Value: !GetAtt RDSInstance.Endpoint.Address
+
+  SSMDBPort:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/db/port"
+      Type: String
+      Value: !GetAtt RDSInstance.Endpoint.Port
+
+  SSMDBName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/db/name"
+      Type: String
+      Value: myordering
+
+  SSMDBUser:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/db/username"
+      Type: String
+      Value: dbadmin
+
+  SSMRedisHost:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/redis/host"
+      Type: String
+      Value: !GetAtt RedisCluster.RedisEndpoint.Address
+
+  SSMRedisPort:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/redis/port"
+      Type: String
+      Value: !GetAtt RedisCluster.RedisEndpoint.Port
+
+  SSMCognitoPoolId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/cognito/user-pool-id"
+      Type: String
+      Value: !Ref CognitoUserPool
+
+  SSMCognitoClientId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/cognito/client-id"
+      Type: String
+      Value: !Ref CognitoUserPoolClient
+
+  SSMCognitoRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/cognito/region"
+      Type: String
+      Value: !Ref AWS::Region
+
+  SSMEventBusName:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/eventbridge/bus-name"
+      Type: String
+      Value: !Ref EventBus
+
+  SSMEventBusRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/eventbridge/region"
+      Type: String
+      Value: !Ref AWS::Region
+
+  SSMAssetsBucket:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/s3/bucket-name"
+      Type: String
+      Value: !Ref AssetsBucket
+
+# ── OUTPUTS ───────────────────────────────────────────────────────────────────
+# These are captured by deploy-foundation.ps1 into infrastructure/params/{env}.outputs.json
+# and referenced by service stacks and scripts.
+
+Outputs:
+  VPCId:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "myordering-VPCId-${AppEnv}"
+
+  LambdaSecurityGroupId:
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: !Sub "myordering-LambdaSecurityGroupId-${AppEnv}"
+
+  PrivateSubnet1Id:
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: !Sub "myordering-PrivateSubnet1Id-${AppEnv}"
+
+  PrivateSubnet2Id:
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: !Sub "myordering-PrivateSubnet2Id-${AppEnv}"
+
+  DBEndpoint:
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: !Sub "myordering-DBEndpoint-${AppEnv}"
+
+  DBPort:
+    Value: !GetAtt RDSInstance.Endpoint.Port
+    Export:
+      Name: !Sub "myordering-DBPort-${AppEnv}"
+
+  RedisEndpoint:
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+    Export:
+      Name: !Sub "myordering-RedisEndpoint-${AppEnv}"
+
+  RedisPort:
+    Value: !GetAtt RedisCluster.RedisEndpoint.Port
+    Export:
+      Name: !Sub "myordering-RedisPort-${AppEnv}"
+
+  CognitoUserPoolId:
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "myordering-CognitoUserPoolId-${AppEnv}"
+
+  CognitoClientId:
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "myordering-CognitoClientId-${AppEnv}"
+
+  EventBusName:
+    Value: !Ref EventBus
+    Export:
+      Name: !Sub "myordering-EventBusName-${AppEnv}"
+
+  EventDLQArn:
+    Value: !GetAtt EventDLQ.Arn
+    Export:
+      Name: !Sub "myordering-EventDLQArn-${AppEnv}"
+
+  AssetsBucketName:
+    Value: !Ref AssetsBucket
+    Export:
+      Name: !Sub "myordering-AssetsBucketName-${AppEnv}"
