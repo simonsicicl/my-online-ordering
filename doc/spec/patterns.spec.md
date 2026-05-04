@@ -1,4 +1,5 @@
 # Code Patterns Spec — My Online Ordering System
+
 > Copy-paste templates for Lambda handlers, DB access, Redis, EventBridge, and error handling.
 > All generated code MUST follow these patterns for consistency.
 
@@ -60,6 +61,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 ```
 
 **GET handler** (no idempotency, no event):
+
 ```typescript
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
@@ -483,7 +485,7 @@ const inventoryItem = await callService<InventoryItem>(url, jwt);
 ### Service URL env vars (add to SAM template + `config.ts` as needed)
 
 | Env Var | Points to |
-|---------|-----------|
+| --- | --- |
 | `INVENTORY_SERVICE_URL` | API GW URL for inventory-service |
 | `MENU_SERVICE_URL` | API GW URL for menu-service |
 | `STORE_SERVICE_URL` | API GW URL for store-service |

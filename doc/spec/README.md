@@ -3,7 +3,7 @@
 ## When to read which spec
 
 | Task | Read |
-|------|------|
+| --- | --- |
 | Implement any API endpoint | [api.spec.md](api.spec.md) |
 | Write DB schema / queries / migrations | [db.spec.md](db.spec.md) |
 | Lambda handler structure / SAM template | [lambda.spec.md](lambda.spec.md) |

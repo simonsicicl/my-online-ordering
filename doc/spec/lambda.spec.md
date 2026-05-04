@@ -1,4 +1,5 @@
 # Lambda Functions Spec — My Online Ordering System
+
 > Defines naming, handler conventions, SAM template patterns, and inter-service communication rules.
 > All Lambda implementations MUST follow this spec.
 
@@ -332,6 +333,7 @@ When creating a new service, the `template.yaml` MUST have:
 ## Inter-Service Communication Rules
 
 ### Rule 1: No direct DB cross-service access
+
 Services MUST NOT query another service's tables directly.
 
 ```typescript
@@ -375,6 +377,7 @@ export async function callService<T>(
 ```
 
 **Usage in a handler** (e.g. order-service calling inventory-service):
+
 ```typescript
 const jwt = event.headers['authorization'];  // forward caller's token
 const url = `${process.env.INVENTORY_SERVICE_URL}/api/v1/inventory/${itemId}`;
@@ -384,7 +387,7 @@ const item = await callService<InventoryItem>(url, jwt);
 **Service URL env vars** — add to SAM template + `config.ts` as needed:
 
 | Env Var | Points to |
-|---------|-----------|
+| --- | --- |
 | `INVENTORY_SERVICE_URL` | inventory-service API GW URL |
 | `MENU_SERVICE_URL` | menu-service API GW URL |
 | `STORE_SERVICE_URL` | store-service API GW URL |

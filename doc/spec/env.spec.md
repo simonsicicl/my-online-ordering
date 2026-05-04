@@ -1,4 +1,5 @@
 # Environment & Configuration Spec — My Online Ordering System
+
 > Defines all environment variables, SSM Parameter Store paths, and runtime config.
 > All Lambda handlers MUST read config from these names only.
 
@@ -77,7 +78,7 @@ Variables are resolved from SSM at **deploy time** (not runtime).
 
 ### Common (all services)
 
-```
+```text
 NODE_ENV=production|staging|development
 APP_ENV=prod|staging|dev
 AWS_REGION=us-east-1
@@ -86,7 +87,7 @@ LOG_LEVEL=info|debug|error
 
 ### Database-connected Lambdas
 
-```
+```text
 DATABASE_HOST          # from SSM /myordering/{env}/db/host
 DATABASE_PORT          # from SSM /myordering/{env}/db/port
 DATABASE_NAME          # from SSM /myordering/{env}/db/name
@@ -98,14 +99,14 @@ DB_MAX_CONNECTIONS=10  # per Lambda instance pool limit
 
 ### Cache-connected Lambdas
 
-```
+```text
 REDIS_HOST             # from SSM /myordering/{env}/redis/host
 REDIS_PORT             # from SSM /myordering/{env}/redis/port
 ```
 
 ### Auth Service / Lambda Authorizer
 
-```
+```text
 COGNITO_USER_POOL_ID   # from SSM /myordering/{env}/cognito/user-pool-id
 COGNITO_CLIENT_ID      # from SSM /myordering/{env}/cognito/client-id
 COGNITO_REGION         # from SSM /myordering/{env}/cognito/region
@@ -113,20 +114,20 @@ COGNITO_REGION         # from SSM /myordering/{env}/cognito/region
 
 ### Payment Service
 
-```
+```text
 STRIPE_SECRET_KEY      # from SSM /myordering/{env}/stripe/secret-key
 STRIPE_WEBHOOK_SECRET  # from SSM /myordering/{env}/stripe/webhook-secret
 ```
 
 ### Event-publishing Lambdas
 
-```
+```text
 EVENTBRIDGE_BUS_NAME   # from SSM /myordering/{env}/eventbridge/bus-name
 ```
 
 ### Notification Service
 
-```
+```text
 WEBSOCKET_API_ENDPOINT # API Gateway WebSocket endpoint, e.g. https://xxxx.execute-api.us-east-1.amazonaws.com/prod
 SES_FROM_EMAIL         # e.g. noreply@myonlineordering.com
 SNS_PUSH_TOPIC_ARN     # SNS topic ARN for push notifications
@@ -134,7 +135,7 @@ SNS_PUSH_TOPIC_ARN     # SNS topic ARN for push notifications
 
 ### Device Service
 
-```
+```text
 IOT_ENDPOINT           # AWS IoT Core endpoint, e.g. xxxx.iot.us-east-1.amazonaws.com
 SQS_PRINT_JOB_QUEUE_URL  # SQS queue URL for print jobs
 ```
