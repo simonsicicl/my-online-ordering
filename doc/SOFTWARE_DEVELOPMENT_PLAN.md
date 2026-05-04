@@ -1,6 +1,7 @@
 ﻿# My Online Ordering System - Software Development Plan
 
 ## Document Information
+
 - **Version**: 1.5
 - **Date**: December 22, 2025
 - **Status**: Master Roadmap (Aligned with v1.1 Design Specs)
@@ -32,12 +33,14 @@ This plan is based on the technical specifications defined in the following mast
 **Overview**: This development plan is designed for a solo developer using AI assistance, with a total timeline of approximately 44-64 weeks (11-16 months). Each version can operate independently and provides complete value.
 
 **Development Approach**:
+
 - AI-assisted code generation for faster development
 - Incremental delivery - each version is production-ready
 - Focus on core features first, add complexity gradually
 - Weekly progress milestones for tracking
 
 **Version Numbering**:
+
 - **v0.x.x**: Beta versions (development phase)
 - **v1.0.0**: Production release (public launch)
 
@@ -54,6 +57,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: AWS environment setup, database design, CI/CD pipeline
 
 **Tasks**:
+
 - AWS account setup (Lambda, API Gateway, RDS PostgreSQL, ElastiCache)
 - **RDS Instance Creation**:
   - Instance type: **db.t3.micro** (2 vCPU, 1GB RAM) or **db.t4g.micro** (ARM)
@@ -76,6 +80,7 @@ This plan is based on the technical specifications defined in the following mast
 - Lambda Concurrency Configuration: Set ReservedConcurrentExecutions = 50 for all DB-connected Lambdas
 
 **Deliverables**:
+
 - [ ] AWS infrastructure provisioned (RDS instance created and configured)
 - [ ] Database schema finalized (Drizzle schema file)
 - [ ] CI/CD pipeline functional
@@ -83,6 +88,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Security Groups and connection pooling configured
 
 **Milestones**:
+
 - Week 2: AWS setup complete, RDS instance created (db.t3.micro, public subnet, SSL enabled)
 - Week 4: CI/CD working, can deploy Lambda functions with direct RDS connections
 
@@ -93,6 +99,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: User authentication and store management
 
 **Services to Build**:
+
 - **Authorization Service**
   - Cognito User Pool setup
   - JWT token validation (Lambda authorizer)
@@ -107,16 +114,19 @@ This plan is based on the technical specifications defined in the following mast
   - Redis caching (10 min TTL)
 
 **Lambda Functions**:
+
 - `auth-pre-signup-trigger`, `auth-post-confirmation`, `auth-token-validator`
 - `store-get-handler`, `store-update-handler`
 
 **Deliverables**:
+
 - [ ] User registration and login working
 - [ ] JWT authentication flow complete
 - [ ] Store management API ready
 - [ ] Redis cache integration
 
 **Milestones**:
+
 - Week 6: Cognito setup, authentication endpoints working
 - Week 8: Store service complete with caching
 
@@ -127,6 +137,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Menu management and order processing
 
 **Services to Build**:
+
 - **Menu Service**
   - Menu items CRUD
   - Category management
@@ -141,16 +152,19 @@ This plan is based on the technical specifications defined in the following mast
   - EventBridge event publishing (Order.Created, Order.StatusChanged)
 
 **Lambda Functions**:
+
 - `menu-get-handler`, `menu-create-handler`, `menu-update-handler`, `menu-delete-handler`
 - `order-create-handler`, `order-get-handler`, `order-update-status-handler`, `order-list-handler`
 
 **Deliverables**:
+
 - [ ] Menu management API complete
 - [ ] Order creation and status updates working
 - [ ] Event-driven architecture (EventBridge)
 - [ ] Image storage (S3 + CloudFront CDN)
 
 **Milestones**:
+
 - Week 10: Menu service complete with image upload
 - Week 12: Order service complete with state machine
 
@@ -161,6 +175,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Payment integration and user-facing applications
 
 **Services to Build**:
+
 - **Payment Service**
   - Stripe integration (card payments)
   - Payment intent creation
@@ -175,6 +190,7 @@ This plan is based on the technical specifications defined in the following mast
   - EventBridge event subscriptions
 
 **Frontend Applications**:
+
 - **User Client (PWA - React 18 + TypeScript + Vite)**
   - Pages: Menu browsing, cart, checkout, order tracking
   - Redux Toolkit state management
@@ -188,10 +204,12 @@ This plan is based on the technical specifications defined in the following mast
   - Daily sales summary
 
 **Lambda Functions**:
+
 - `payment-create-intent`, `payment-webhook-handler`, `payment-refund-handler`
 - `notification-websocket-connect`, `notification-websocket-disconnect`, `notification-send-handler`
 
 **Deliverables**:
+
 - [ ] Stripe payment integration working
 - [ ] Real-time WebSocket notifications
 - [ ] User Client PWA (installable, responsive)
@@ -199,11 +217,13 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] End-to-end order flow complete
 
 **Milestones**:
+
 - Week 14: Payment service complete, Stripe test mode working
 - Week 15: User Client MVP complete
 - Week 16: Merchant Dashboard complete, full system testing
 
 **Version 0.1.0 Success Criteria**:
+
 - Customer can browse menu, place order, pay with card
 - Merchant can view orders in real-time, manage menu
 - Basic daily sales report available
@@ -222,8 +242,9 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Recipe-driven ingredient-level inventory tracking with real-time deduction
 
 **Service to Build**:
+
 - **Inventory Service**
-  - **Recipe-Driven Inventory System**: 
+  - **Recipe-Driven Inventory System**:
     - Ingredient-level tracking (coffee beans, milk, sugar, etc.)
     - Recipe definitions: Map menu items + variants to ingredient deductions
     - Recipe Conditions: Trigger specific recipes based on customization options
@@ -239,15 +260,18 @@ This plan is based on the technical specifications defined in the following mast
   - Multi-tenancy: All inventory data isolated by `storeId`
 
 **Database Schema Updates**:
+
 - Tables: `inventory_items` (ingredients), `variants` (store-scoped), `recipes`, `recipe_conditions`, `inventory_logs`
 - PostgreSQL triggers for auto-alerts
 - Store isolation enforced at schema level
 
 **Lambda Functions**:
+
 - `inventory-get-handler`, `inventory-update-handler`, `inventory-deduct-handler` (recipe-based), `inventory-alert-handler`
 - `recipe-create-handler`, `recipe-condition-handler`
 
 **Deliverables**:
+
 - [ ] Recipe-driven inventory tracking with ingredient-level deduction
 - [ ] Centralized Variant Registry (store-scoped)
 - [ ] Low stock alerts (EventBridge ??Email)
@@ -255,6 +279,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Inventory management UI in dashboard (ingredients + recipes)
 
 **Milestones**:
+
 - Week 18: Inventory service complete with recipe system
 - Week 20: Low stock alerts working, dashboard UI integrated
 
@@ -265,6 +290,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Customer profiles and device registry
 
 **Services to Build**:
+
 - **User Profile Service**
   - Customer profile CRUD
   - Order history (JOIN with orders table)
@@ -277,20 +303,24 @@ This plan is based on the technical specifications defined in the following mast
   - Basic job logging (no hardware integration yet)
 
 **Database Schema Updates**:
+
 - Table: `user_profiles` (userId, preferences)
 - Table: `devices` (deviceId, storeId, deviceType, status)
 - Table: `print_jobs` (jobId, deviceId, status, payload)
 
 **Lambda Functions**:
+
 - `profile-get-handler`, `profile-update-handler`, `profile-orders-handler`
 - `device-register-handler`, `device-update-status-handler`, `device-print-job-handler`
 
 **Deliverables**:
+
 - [ ] Customer profiles with order history
 - [ ] Device registration system
 - [ ] Print job queue (software only)
 
 **Milestones**:
+
 - Week 22: User profile service complete
 - Week 24: Device service software layer ready
 
@@ -301,6 +331,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Desktop POS application for counter orders with role-based access
 
 **Frontend Application**:
+
 - **POS Application (Electron + React 18 + TypeScript + Vite)**
   - Quick order entry (keyboard shortcuts)
   - Cash and card payment support
@@ -315,16 +346,19 @@ This plan is based on the technical specifications defined in the following mast
   - Offline mode with local queue
 
 **Features**:
+
 - Barcode scanner support (future hardware integration)
 - Customer display (optional, future)
 - Receipt preview (print to PDF for now)
 - Discount/discountReason fields stored in Orders table
 
 **Database Schema Updates**:
+
 - Orders table: `discount` (decimal), `discountReason` (text) fields already exist
 - StoreStaff table: Maps users to stores with StaffRole enum
 
 **Deliverables**:
+
 - [ ] POS Electron app complete
 - [ ] Cash payment support
 - [ ] Manual discount functionality with reason tracking
@@ -333,10 +367,12 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Order modification functionality
 
 **Milestones**:
+
 - Week 26: POS app basic structure complete
 - Week 28: Full POS functionality with RBAC, staff training materials ready
 
 **Version 0.2.0 Success Criteria**:
+
 - Recipe-driven real-time inventory tracking working
 - POS system operational with Manual Discount support
 - Staff can process counter orders with cash/card
@@ -356,6 +392,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Comprehensive analytics and reporting
 
 **Service to Build**:
+
 - **Report Service**
   - Daily/weekly/monthly sales reports
   - Best sellers by time period
@@ -366,14 +403,17 @@ This plan is based on the technical specifications defined in the following mast
   - Direct SQL queries on RDS (no Glue/Athena for MVP)
 
 **Database Schema Updates**:
+
 - Materialized views: `mv_daily_sales`, `mv_best_sellers`, `mv_staff_performance`
 - Refresh via EventBridge scheduled Lambda (hourly)
 
 **Lambda Functions**:
+
 - `report-sales-handler`, `report-bestsellers-handler`, `report-anomalies-handler`
 - `report-z-report-generator`, `report-anomaly-scanner`
 
 **Deliverables**:
+
 - [ ] Sales analytics API
 - [ ] Automated daily Z-Report (PDF generation)
 - [ ] Best sellers report
@@ -381,6 +421,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Analytics dashboard (Recharts integration)
 
 **Milestones**:
+
 - Week 30: Report service complete with materialized views
 - Week 32: Dashboard analytics UI complete
 
@@ -391,6 +432,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Customer loyalty and marketing
 
 **Service to Build**:
+
 - **CRM Service**
   - **Note**: This is where CRM tables (currently removed from v1.0 Schema) will be introduced
   - Link `Users` table to `LoyaltyPoints` and `Coupons` tables
@@ -402,16 +444,19 @@ This plan is based on the technical specifications defined in the following mast
   - Multi-tenancy: All CRM data isolated by `storeId`
 
 **Database Schema Updates**:
+
 - **New Tables**: `loyalty_points`, `coupons`, `coupon_redemptions`, `customer_tiers`, `referrals`
 - PostgreSQL triggers for tier calculation
 - Redis cache for coupon validation (fast lookup)
 - Foreign keys: Link to `users` table via `userId`
 
 **Lambda Functions**:
+
 - `crm-points-handler`, `crm-coupon-create-handler`, `crm-coupon-validate-handler`
 - `crm-tier-calculate-handler`, `crm-referral-handler`
 
 **Deliverables**:
+
 - [ ] Loyalty points earning and redemption
 - [ ] Coupon system (discount codes)
 - [ ] Customer segmentation
@@ -419,10 +464,12 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] CRM dashboard UI
 
 **Milestones**:
+
 - Week 34: CRM service complete with points and coupons
 - Week 36: Dashboard CRM UI complete, customer segmentation working
 
 **Version 0.3.0 Success Criteria**:
+
 - Comprehensive sales reports available
 - Loyalty program operational (CRM tables now in production schema)
 - Merchants can create and manage coupons
@@ -441,6 +488,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Touch-optimized self-service ordering
 
 **Frontend Application**:
+
 - **Kiosk Application (Electron + React 18 + TypeScript + Vite)**
   - Touch-optimized UI (large buttons, min 1920?1080)
   - Menu browsing with images
@@ -452,11 +500,13 @@ This plan is based on the technical specifications defined in the following mast
   - Offline mode with IndexedDB cache
 
 **Features**:
+
 - QR code scanner support (loyalty lookup)
 - Customer receipt preview
 - Order confirmation screen
 
 **Deliverables**:
+
 - [ ] Kiosk app complete (software only)
 - [ ] Touch-optimized interface
 - [ ] Auto-reset functionality
@@ -464,6 +514,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Offline queue with retry
 
 **Milestones**:
+
 - Week 38: Kiosk UI complete
 - Week 40: Full kiosk flow tested (without hardware)
 
@@ -474,6 +525,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Physical device integration
 
 **Hardware Peripherals**:
+
 - Receipt printer (Star TSP654II via AWS IoT Core)
 - Kitchen label printer
 - Card reader (PAX A920 SDK integration)
@@ -481,6 +533,7 @@ This plan is based on the technical specifications defined in the following mast
 - QR code scanner
 
 **Device Service Enhancement**:
+
 - AWS IoT Core setup (MQTT communication)
 - Printer SDK integration (ESC/POS commands)
 - Card reader SDK integration
@@ -488,9 +541,11 @@ This plan is based on the technical specifications defined in the following mast
 - Device health monitoring
 
 **Lambda Functions**:
+
 - `device-iot-consumer`, `device-health-monitor`, `device-print-job-processor`
 
 **Deliverables**:
+
 - [ ] Receipt printer functional
 - [ ] Kitchen label printer working (order number, items, notes, pickup time)
 - [ ] Card payment terminal integrated
@@ -498,6 +553,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] QR code scanner operational
 
 **Hardware Procurement**:
+
 - 1x Kiosk touchscreen (1920?1080 or higher)
 - 1x Star TSP654II receipt printer
 - 1x Kitchen label printer
@@ -506,10 +562,12 @@ This plan is based on the technical specifications defined in the following mast
 - 1x QR code scanner
 
 **Milestones**:
+
 - Week 42: Printer integration complete
 - Week 44: Full hardware setup tested, pilot kiosk installed
 
 **Version 0.4.0 Success Criteria**:
+
 - Kiosk operational with all hardware
 - Customers can self-order and pay at kiosk
 - Receipt and kitchen labels print correctly
@@ -528,6 +586,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Real-time kitchen order management
 
 **Frontend Application**:
+
 - **KDS Application (React 18 + TypeScript + Vite)**
   - Real-time order display (WebSocket)
   - Order cards sorted by time
@@ -543,16 +602,19 @@ This plan is based on the technical specifications defined in the following mast
   - Auto-refresh every 2s
 
 **Features**:
+
 - Order details: Order number, items, quantities, special notes, order source
 - Preparation time tracking
 - Kitchen performance metrics
 - Auto-bump for completed scheduled orders
 
 **Lambda Functions**:
+
 - `kds-order-consumer` (EventBridge ??WebSocket push)
 - `kds-bump-handler` (update order item status)
 
 **Deliverables**:
+
 - [ ] KDS application complete
 - [ ] Real-time WebSocket integration
 - [ ] Station filtering working
@@ -560,16 +622,21 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Multi-screen support (2+ displays)
 
 **Hardware**:
+
 - 2x 43" TV displays
 - Wall mounts for kitchen environment
 - HDMI cables
 
 **Milestones**:
+
 - Week 46: KDS app complete with WebSocket
+
 - Week 48: Kitchen hardware setup, staff training complete
 
 **Version 0.5.0 Success Criteria**:
+
 - Orders appear on KDS in real-time
+
 - Kitchen staff can bump items to mark complete
 - Multiple stations can operate independently
 - Audio alerts notify kitchen of new orders
@@ -587,6 +654,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: UberEats order import, menu sync, and bi-directional status updates
 
 **Service to Build**:
+
 - **Delivery Platform Webhooks Service (UberEats)**
   - Webhook endpoint for order notifications
   - HMAC-SHA256 signature validation
@@ -598,16 +666,19 @@ This plan is based on the technical specifications defined in the following mast
   - Multi-tenancy: Platform orders isolated by `storeId`
 
 **Database Schema Updates**:
+
 - **New Tables**: `platform_orders`, `platform_sync_logs`
 - Redis: `platform:idempotency:{orderId}` cache
 - OrderSource enum: Add `UBEREATS` value
 
 **Lambda Functions**:
+
 - `webhook-ubereats-handler`, `webhook-signature-validator`
 - `platform-status-sync-ubereats`, `platform-order-mapper`
 - `platform-menu-sync-ubereats`
 
 **Deliverables**:
+
 - [ ] UberEats webhook endpoint working
 - [ ] Orders auto-imported to system
 - [ ] Bi-directional status sync
@@ -616,6 +687,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Error handling with retry
 
 **Milestones**:
+
 - Week 50: UberEats webhook integration complete
 - Week 52: Status sync and menu sync working, sandbox testing passed
 
@@ -626,6 +698,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Foodpanda order import, menu sync, and bi-directional status updates
 
 **Service Enhancement**:
+
 - **Delivery Platform Webhooks Service (Foodpanda)**
   - Foodpanda webhook endpoint
   - Partner API integration
@@ -635,14 +708,17 @@ This plan is based on the technical specifications defined in the following mast
   - Multi-tenancy: Platform orders isolated by `storeId`
 
 **Database Schema Updates**:
+
 - OrderSource enum: Add `FOODPANDA` value
 - Extend `platform_orders` and `platform_sync_logs` for Foodpanda
 
 **Lambda Functions**:
+
 - `webhook-foodpanda-handler`, `platform-status-sync-foodpanda`
 - `platform-menu-sync-foodpanda`
 
 **Deliverables**:
+
 - [ ] Foodpanda webhook endpoint working
 - [ ] Orders auto-imported
 - [ ] Bi-directional status sync
@@ -650,6 +726,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Multi-platform order view in dashboard
 
 **Milestones**:
+
 - Week 54: Foodpanda integration complete
 - Week 56: Multi-platform dashboard working
 
@@ -660,6 +737,7 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Automated menu synchronization and platform management
 
 **Features to Build**:
+
 - Automated menu sync to platforms (EventBridge schedule)
 - Inventory sync to platforms (mark items unavailable)
 - Platform-specific pricing rules
@@ -669,15 +747,18 @@ This plan is based on the technical specifications defined in the following mast
 - Multi-tenancy: All platform configurations isolated by `storeId`
 
 **Lambda Functions**:
+
 - `platform-menu-sync`, `platform-inventory-sync`, `platform-analytics-handler`
 
 **Dashboard Enhancement**:
+
 - Platform order analytics (UberEats vs Foodpanda comparison)
 - Menu mapping interface (map internal menu items to platform item IDs)
 - Platform status monitoring
 - Sync logs and error reporting
 
 **Deliverables**:
+
 - [ ] Automated menu sync to UberEats and Foodpanda
 - [ ] Inventory sync (unavailable items)
 - [ ] Platform mapping UI in dashboard
@@ -685,10 +766,12 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Unified order view (all channels)
 
 **Milestones**:
+
 - Week 58: Menu sync automation complete
 - Week 60: Full multi-platform management working
 
 **Version 0.6.0 Success Criteria**:
+
 - UberEats and Foodpanda orders auto-imported
 - Status updates sync to both platforms
 - Menu and inventory sync automatically
@@ -708,8 +791,8 @@ This plan is based on the technical specifications defined in the following mast
 **Objectives**: Comprehensive testing, security audit, production deployment
 
 **Testing Activities**:
-
 **Week 61: Load & Performance Testing**
+
 - Load test with k6/JMeter
   - 500 concurrent users
   - 1000+ orders per hour
@@ -718,7 +801,6 @@ This plan is based on the technical specifications defined in the following mast
 - Database query optimization
 - Lambda cold start optimization
 - CloudFront cache hit rate validation
-
 **Week 62: Security Audit**
 - OWASP Top 10 vulnerability scan (OWASP ZAP)
 - Dependency vulnerability scan (Snyk)
@@ -726,7 +808,6 @@ This plan is based on the technical specifications defined in the following mast
 - Penetration testing (third-party or self-audit)
 - Security fixes deployment
 - Secrets rotation validation
-
 **Week 63: User Acceptance Testing (UAT)**
 - Pilot launch with 1 restaurant (2 weeks beta)
 - Staff training and onboarding
@@ -734,7 +815,6 @@ This plan is based on the technical specifications defined in the following mast
 - Performance monitoring (CloudWatch dashboards)
 - Fix critical bugs
 - User satisfaction survey
-
 **Week 64: Production Launch**
 - Production deployment
 - DNS cutover (Route 53)
@@ -745,6 +825,7 @@ This plan is based on the technical specifications defined in the following mast
 - Backup and disaster recovery validation
 
 **Deliverables**:
+
 - [ ] Load testing passed (500+ concurrent users)
 - [ ] Security audit complete (no critical vulnerabilities)
 - [ ] PCI DSS compliance validated
@@ -754,6 +835,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Monitoring dashboards active (CloudWatch, X-Ray)
 
 **Testing Checklist**:
+
 - [ ] Load test: 500 concurrent users, 1000+ orders/hour
 - [ ] Stress test: 2x peak load, system remains stable
 - [ ] Failover test: RDS instance recovery, Lambda scaling
@@ -766,6 +848,7 @@ This plan is based on the technical specifications defined in the following mast
 - [ ] Disaster recovery: Multi-region failover tested (optional)
 
 **Performance Targets**:
+
 - API response < 200ms (p95)
 - 500 concurrent users supported
 - 99.9% uptime (monthly SLA)
@@ -773,6 +856,7 @@ This plan is based on the technical specifications defined in the following mast
 - Lambda cold start < 1s
 
 **Success Metrics**:
+
 - System stability: Zero critical outages in pilot period
 - Order completion rate > 98%
 - Customer satisfaction > 4.5/5
@@ -780,6 +864,7 @@ This plan is based on the technical specifications defined in the following mast
 - Payment success rate > 99%
 
 **Launch Plan**:
+
 - Week 63: Soft launch (1 pilot restaurant)
 - Week 64: Public launch
   - Marketing campaign (social media, ads)
@@ -788,6 +873,7 @@ This plan is based on the technical specifications defined in the following mast
   - Blog post and press release
 
 **Post-Launch (Week 65+)**:
+
 - Continuous monitoring (CloudWatch, X-Ray, error tracking)
 - Bug fix priority queue
 - Feature requests collection
@@ -796,6 +882,7 @@ This plan is based on the technical specifications defined in the following mast
 - Cost optimization review
 
 **Version 1.0.0 Success Criteria**:
+
 - Public production launch complete
 - 5+ restaurants onboarded
 - 99.9% uptime in first month
@@ -808,7 +895,7 @@ This plan is based on the technical specifications defined in the following mast
 ## Document History
 
 | Version | Date | Author | Changes |
-|---------|------|--------|---------|
+| --- | --- | --- | --- |
 | 1.0 | 2025-12-17 | Simon Chou | Initial draft |
 | 1.1 | 2025-12-22 | Simon Chou | Aligned technical concepts with v1.1 Design Specs: Recipe-Driven Inventory, Centralized Variant Registry, RBAC with LEAD role, Manual Discounts in v0.2.0, Delivery Platform Integration limited to UberEats & Foodpanda, Multi-tenancy emphasis |
 | 1.2 | 2025-12-22 | Simon Chou | Database architecture update: RDS PostgreSQL (db.t3.micro), Connection model: Direct Lambda connections with application-level pooling |
