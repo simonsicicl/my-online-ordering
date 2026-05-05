@@ -22,6 +22,12 @@ Parameters:
     Type: String
     Default: noreply@myonlineordering.com
 
+  # Local dev IP for direct RDS access (drizzle-kit push / migrations)
+  DevMyIPCidr:
+    Type: String
+    Description: "Your local IP CIDR for RDS access (e.g. 1.2.3.4/32)"
+    Default: "0.0.0.0/0"
+
 Resources:
 
   # ── VPC ───────────────────────────────────────────────────────────────────
@@ -122,6 +128,11 @@ Resources:
           FromPort: 5432
           ToPort: 5432
           SourceSecurityGroupId: !Ref LambdaSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !Ref DevMyIPCidr
+          Description: Local dev machine access for drizzle-kit migrations
 
   RedisSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -159,7 +170,8 @@ Resources:
       StorageType: gp2
       StorageEncrypted: true
       MultiAZ: false                 # false for dev/staging (cost reason)
-      PubliclyAccessible: false
+      PubliclyAccessible: true          # required for local migration in dev
+      DBParameterGroupName: !Ref RDSParameterGroup
       VPCSecurityGroups:
         - !Ref RDSSecurityGroup
       DBSubnetGroupName: !Ref DBSubnetGroup
@@ -167,6 +179,78 @@ Resources:
       Tags:
         - Key: Environment
           Value: !Ref AppEnv
+
+  RDSParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      Description: "PostgreSQL 15 parameter group for my-ordering"
+      Family: postgres15
+      Parameters:
+        max_connections: "87"        # 10 conns x 8 Lambdas + 7 buffer
+
+  # ── CLOUDWATCH ALARMS ─────────────────────────────────────────────────────
+
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${AppEnv}-ordering-alarms"
+
+  AlarmRDSConnections:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AppEnv}-rds-high-connections"
+      AlarmDescription: "RDS DB connections exceeded threshold"
+      Namespace: AWS/RDS
+      MetricName: DatabaseConnections
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RDSInstance
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  AlarmRDSFreeStorage:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AppEnv}-rds-low-free-storage"
+      AlarmDescription: "RDS free storage below 2 GB"
+      Namespace: AWS/RDS
+      MetricName: FreeStorageSpace
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RDSInstance
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 2147483648   # 2 GB in bytes
+      ComparisonOperator: LessThanThreshold
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
+
+  AlarmRDSCPU:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${AppEnv}-rds-high-cpu"
+      AlarmDescription: "RDS CPU utilization above 80%"
+      Namespace: AWS/RDS
+      MetricName: CPUUtilization
+      Dimensions:
+        - Name: DBInstanceIdentifier
+          Value: !Ref RDSInstance
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref AlarmTopic
+      TreatMissingData: notBreaching
 
   # ── ELASTICACHE REDIS ─────────────────────────────────────────────────────
 
