@@ -62,6 +62,9 @@ jobs:
           sam build --template foundation/template.yaml
           sam deploy --config-file samconfig.toml --config-env dev --stack-name myordering-foundation-dev --no-confirm-changeset --no-fail-on-empty-changeset
 
+      - name: Install esbuild
+        run: npm install -g esbuild
+
       - name: Validate auth-service SAM template
         run: sam validate --template services/auth-service/template.yaml --region us-east-1
 
@@ -127,6 +130,9 @@ jobs:
         run: |
           sam build --template foundation/template.yaml
           sam deploy --config-file samconfig.toml --config-env prod --stack-name myordering-foundation-prod --no-confirm-changeset --no-fail-on-empty-changeset
+
+      - name: Install esbuild
+        run: npm install -g esbuild
 
       - name: Validate auth-service SAM template
         run: sam validate --template services/auth-service/template.yaml --region us-east-1
