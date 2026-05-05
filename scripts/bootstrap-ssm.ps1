@@ -11,10 +11,13 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("dev", "staging", "prod")]
-    [string]$Env,
+    [string]$Environment,
 
     [Parameter(Mandatory = $false)]
-    [string]$Profile = "default"
+    [string]$Profile = "default",
+
+    [Parameter(Mandatory = $false)]
+    [string]$Region = "us-east-1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,7 +34,7 @@ function Put-SSMSecret {
         --type SecureString `
         --overwrite `
         --profile $Profile `
-        --region us-east-1 | Out-Null
+        --region $Region | Out-Null
     Write-OK "Written: $Name"
 }
 
@@ -43,22 +46,22 @@ function Put-SSMString {
         --type String `
         --overwrite `
         --profile $Profile `
-        --region us-east-1 | Out-Null
+        --region $Region | Out-Null
     Write-OK "Written: $Name"
 }
 
 Write-Host "`n============================================" -ForegroundColor Magenta
-Write-Host "  SSM Bootstrap — Environment: $Env" -ForegroundColor Magenta
+Write-Host "  SSM Bootstrap -- Environment: $Environment" -ForegroundColor Magenta
 Write-Host "============================================`n" -ForegroundColor Magenta
 
 # ── VERIFY FOUNDATION STACK EXISTS ────────────────────────────────────────────
 Write-Step "Verifying foundation stack outputs..."
-$stackName = "myordering-foundation-$Env"
+$stackName = "myordering-foundation-$Environment"
 try {
     $stackStatus = aws cloudformation describe-stacks `
         --stack-name $stackName `
         --profile $Profile `
-        --region us-east-1 `
+        --region $Region `
         --query "Stacks[0].StackStatus" `
         --output text
     Write-OK "Foundation stack status: $stackStatus"
@@ -76,7 +79,7 @@ $dbPassword = Read-Host "    DB Password" -AsSecureString
 $dbPasswordPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [Runtime.InteropServices.Marshal]::SecureStringToBSTR($dbPassword)
 )
-Put-SSMSecret -Name "/myordering/$Env/db/password" -Value $dbPasswordPlain
+Put-SSMSecret -Name "/myordering/$Environment/db/password" -Value $dbPasswordPlain
 
 # ── STRIPE ────────────────────────────────────────────────────────────────────
 Write-Step "Stripe API keys..."
@@ -87,7 +90,7 @@ $stripeSecretKey = Read-Host "    Stripe Secret Key (sk_test_... or sk_live_...)
 $stripeSecretKeyPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
     [Runtime.InteropServices.Marshal]::SecureStringToBSTR($stripeSecretKey)
 )
-Put-SSMSecret -Name "/myordering/$Env/stripe/secret-key" -Value $stripeSecretKeyPlain
+Put-SSMSecret -Name "/myordering/$Environment/stripe/secret-key" -Value $stripeSecretKeyPlain
 
 $stripePublishableKey = Read-Host "    Stripe Publishable Key (pk_test_... or pk_live_...)"
 Put-SSMString -Name "/myordering/$Env/stripe/publishable-key" -Value $stripePublishableKey
@@ -99,7 +102,7 @@ Write-Warn "Run: aws ssm put-parameter --name '/myordering/$Env/stripe/webhook-s
 Write-Step "CloudFront domain (optional — press Enter to skip)..."
 $cfDomain = Read-Host "    CloudFront domain (e.g. dxxxx.cloudfront.net) or blank to skip"
 if ($cfDomain) {
-    Put-SSMString -Name "/myordering/$Env/cloudfront/domain" -Value $cfDomain
+    Put-SSMString -Name "/myordering/$Environment/cloudfront/domain" -Value $cfDomain
 } else {
     Write-Warn "Skipped. Add later: aws ssm put-parameter --name '/myordering/$Env/cloudfront/domain' ..."
 }
@@ -108,25 +111,25 @@ if ($cfDomain) {
 Write-Step "Verifying all required SSM parameters exist..."
 
 $required = @(
-    "/myordering/$Env/db/host",
-    "/myordering/$Env/db/port",
-    "/myordering/$Env/db/name",
-    "/myordering/$Env/db/username",
-    "/myordering/$Env/db/password",
-    "/myordering/$Env/redis/host",
-    "/myordering/$Env/redis/port",
-    "/myordering/$Env/cognito/user-pool-id",
-    "/myordering/$Env/cognito/client-id",
-    "/myordering/$Env/cognito/region",
-    "/myordering/$Env/eventbridge/bus-name",
-    "/myordering/$Env/stripe/secret-key",
-    "/myordering/$Env/stripe/publishable-key"
+    "/myordering/$Environment/db/host",
+    "/myordering/$Environment/db/port",
+    "/myordering/$Environment/db/name",
+    "/myordering/$Environment/db/username",
+    "/myordering/$Environment/db/password",
+    "/myordering/$Environment/redis/host",
+    "/myordering/$Environment/redis/port",
+    "/myordering/$Environment/cognito/user-pool-id",
+    "/myordering/$Environment/cognito/client-id",
+    "/myordering/$Environment/cognito/region",
+    "/myordering/$Environment/eventbridge/bus-name",
+    "/myordering/$Environment/stripe/secret-key",
+    "/myordering/$Environment/stripe/publishable-key"
 )
 
 $allOk = $true
 foreach ($param in $required) {
     try {
-        aws ssm get-parameter --name $param --profile $Profile --region us-east-1 | Out-Null
+        aws ssm get-parameter --name $param --profile $Profile --region $Region | Out-Null
         Write-OK $param
     } catch {
         Write-Host "    [MISSING] $param" -ForegroundColor Red
@@ -137,7 +140,7 @@ foreach ($param in $required) {
 if ($allOk) {
     Write-Host "`n============================================" -ForegroundColor Green
     Write-Host "  All SSM parameters verified. " -ForegroundColor Green
-    Write-Host "  Next step: .\scripts\migrate.ps1 -Env $Env -Profile $Profile" -ForegroundColor Green
+    Write-Host "  Next step: .\scripts\migrate.ps1 -Environment $Environment -Profile $Profile" -ForegroundColor Green
     Write-Host "============================================`n" -ForegroundColor Green
 } else {
     Write-Host "`n[ERROR] Some SSM parameters are missing. Fix before proceeding." -ForegroundColor Red

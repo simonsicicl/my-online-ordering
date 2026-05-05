@@ -3,7 +3,7 @@
 # Reads DB connection details from SSM Parameter Store — no hardcoded values.
 #
 # Usage:
-#   .\scripts\migrate.ps1 -Env dev -Profile myordering-dev
+#   .\scripts\migrate.ps1 -Environment dev -Profile myordering-dev
 #
 # Prerequisites:
 #   - Foundation stack deployed (RDS is running)
@@ -13,10 +13,13 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("dev", "staging", "prod")]
-    [string]$Env,
+    [string]$Environment,
 
     [Parameter(Mandatory = $false)]
-    [string]$Profile = "default"
+    [string]$Profile = "default",
+
+    [Parameter(Mandatory = $false)]
+    [string]$Region = "us-east-1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -26,23 +29,23 @@ function Write-OK   { param([string]$msg) Write-Host "    [OK] $msg" -Foreground
 
 function Get-SSMValue {
     param([string]$Name, [switch]$WithDecryption)
-    $args = @("ssm", "get-parameter", "--name", $Name, "--profile", $Profile, "--region", "us-east-1", "--query", "Parameter.Value", "--output", "text")
+    $args = @("ssm", "get-parameter", "--name", $Name, "--profile", $Profile, "--region", $Region, "--query", "Parameter.Value", "--output", "text")
     if ($WithDecryption) { $args += "--with-decryption" }
     return (& aws @args).Trim()
 }
 
 Write-Host "`n============================================" -ForegroundColor Magenta
-Write-Host "  DB Migration — Environment: $Env" -ForegroundColor Magenta
+Write-Host "  DB Migration -- Environment: $Environment" -ForegroundColor Magenta
 Write-Host "============================================`n" -ForegroundColor Magenta
 
 # ── FETCH DB CONNECTION FROM SSM ──────────────────────────────────────────────
 Write-Step "Fetching DB connection details from SSM..."
 
-$dbHost     = Get-SSMValue -Name "/myordering/$Env/db/host"
-$dbPort     = Get-SSMValue -Name "/myordering/$Env/db/port"
-$dbName     = Get-SSMValue -Name "/myordering/$Env/db/name"
-$dbUser     = Get-SSMValue -Name "/myordering/$Env/db/username"
-$dbPassword = Get-SSMValue -Name "/myordering/$Env/db/password" -WithDecryption
+$dbHost     = Get-SSMValue -Name "/myordering/$Environment/db/host"
+$dbPort     = Get-SSMValue -Name "/myordering/$Environment/db/port"
+$dbName     = Get-SSMValue -Name "/myordering/$Environment/db/name"
+$dbUser     = Get-SSMValue -Name "/myordering/$Environment/db/username"
+$dbPassword = Get-SSMValue -Name "/myordering/$Environment/db/password" -WithDecryption
 
 Write-OK "DB Host: $dbHost"
 Write-OK "DB Port: $dbPort"
@@ -57,7 +60,7 @@ $env:DATABASE_PORT     = $dbPort
 $env:DATABASE_NAME     = $dbName
 $env:DATABASE_USER     = $dbUser
 $env:DATABASE_PASSWORD = $dbPassword
-$env:DATABASE_SSL      = if ($Env -eq "dev") { "false" } else { "true" }
+$env:DATABASE_SSL      = if ($Environment -eq "dev") { "false" } else { "true" }
 
 # ── RUN DRIZZLE-KIT PUSH ──────────────────────────────────────────────────────
 Write-Step "Running Drizzle migration (drizzle-kit push)..."
@@ -75,5 +78,5 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "`n============================================" -ForegroundColor Green
 Write-Host "  Migration complete." -ForegroundColor Green
-Write-Host "  Next step: .\scripts\deploy-services.ps1 -Env $Env -Profile $Profile" -ForegroundColor Green
+Write-Host "  Next step: .\scripts\deploy-services.ps1 -Environment $Environment -Profile $Profile" -ForegroundColor Green
 Write-Host "============================================`n" -ForegroundColor Green

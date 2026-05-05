@@ -3,12 +3,12 @@
 # Checks Lambda function states and API Gateway 401 responses (expected without JWT).
 #
 # Usage:
-#   .\scripts\verify-deployment.ps1 -Env dev -Profile myordering-dev
+#   .\scripts\verify-deployment.ps1 -Environment dev -Profile myordering-dev
 
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("dev", "staging", "prod")]
-    [string]$Env,
+    [string]$Environment,
 
     [Parameter(Mandatory = $false)]
     [string]$Profile = "default",
@@ -28,49 +28,49 @@ $script:failures = 0
 
 # All Lambda functions that should exist after full deployment
 $expectedFunctions = @(
-    "auth-pre-signup-trigger-$Env",
-    "auth-post-confirmation-trigger-$Env",
-    "auth-token-validator-$Env",
-    "auth-register-handler-$Env",
-    "auth-login-handler-$Env",
-    "auth-refresh-handler-$Env",
-    "auth-logout-handler-$Env",
-    "store-get-handler-$Env",
-    "store-create-handler-$Env",
-    "store-update-handler-$Env",
-    "store-update-status-handler-$Env",
-    "menu-get-handler-$Env",
-    "menu-create-handler-$Env",
-    "menu-update-handler-$Env",
-    "menu-delete-handler-$Env",
-    "menu-availability-handler-$Env",
-    "order-create-handler-$Env",
-    "order-get-handler-$Env",
-    "order-list-handler-$Env",
-    "order-update-status-handler-$Env",
-    "order-cancel-handler-$Env",
-    "order-payment-update-$Env",
-    "inventory-get-handler-$Env",
-    "inventory-update-handler-$Env",
-    "inventory-reserve-handler-$Env",
-    "inventory-commit-handler-$Env",
-    "payment-create-intent-$Env",
-    "payment-charge-handler-$Env",
-    "payment-refund-handler-$Env",
-    "payment-webhook-handler-$Env",
-    "profile-get-handler-$Env",
-    "profile-update-handler-$Env",
-    "profile-orders-handler-$Env",
-    "device-register-handler-$Env",
-    "device-print-job-handler-$Env",
-    "notification-send-handler-$Env",
-    "notification-dispatcher-$Env",
-    "notification-websocket-connect-$Env",
-    "notification-websocket-disconnect-$Env"
+    "auth-pre-signup-trigger-$Environment",
+    "auth-post-confirmation-trigger-$Environment",
+    "auth-token-validator-$Environment",
+    "auth-register-handler-$Environment",
+    "auth-login-handler-$Environment",
+    "auth-refresh-handler-$Environment",
+    "auth-logout-handler-$Environment",
+    "store-get-handler-$Environment",
+    "store-create-handler-$Environment",
+    "store-update-handler-$Environment",
+    "store-update-status-handler-$Environment",
+    "menu-get-handler-$Environment",
+    "menu-create-handler-$Environment",
+    "menu-update-handler-$Environment",
+    "menu-delete-handler-$Environment",
+    "menu-availability-handler-$Environment",
+    "order-create-handler-$Environment",
+    "order-get-handler-$Environment",
+    "order-list-handler-$Environment",
+    "order-update-status-handler-$Environment",
+    "order-cancel-handler-$Environment",
+    "order-payment-update-$Environment",
+    "inventory-get-handler-$Environment",
+    "inventory-update-handler-$Environment",
+    "inventory-reserve-handler-$Environment",
+    "inventory-commit-handler-$Environment",
+    "payment-create-intent-$Environment",
+    "payment-charge-handler-$Environment",
+    "payment-refund-handler-$Environment",
+    "payment-webhook-handler-$Environment",
+    "profile-get-handler-$Environment",
+    "profile-update-handler-$Environment",
+    "profile-orders-handler-$Environment",
+    "device-register-handler-$Environment",
+    "device-print-job-handler-$Environment",
+    "notification-send-handler-$Environment",
+    "notification-dispatcher-$Environment",
+    "notification-websocket-connect-$Environment",
+    "notification-websocket-disconnect-$Environment"
 )
 
 Write-Host "`n============================================" -ForegroundColor Magenta
-Write-Host "  Deployment Verification — Env: $Env" -ForegroundColor Magenta
+Write-Host "  Deployment Verification -- Environment: $Environment" -ForegroundColor Magenta
 Write-Host "============================================`n" -ForegroundColor Magenta
 
 # ── CHECK LAMBDA FUNCTIONS ────────────────────────────────────────────────────
@@ -101,7 +101,7 @@ Write-Step "Checking API Gateway endpoints (expect HTTP 401 without JWT)..."
 $services = @("auth-service", "store-service", "menu-service", "order-service", "inventory-service", "payment-service")
 
 foreach ($svc in $services) {
-    $stackName  = "myordering-$svc-$Env"
+    $stackName  = "myordering-$svc-$Environment"
     $outputKey  = ($svc -replace "-service", "").Substring(0,1).ToUpper() + ($svc -replace "-service", "").Substring(1) + "ApiUrl"
 
     try {
@@ -138,11 +138,11 @@ foreach ($svc in $services) {
 Write-Step "Checking critical SSM parameters..."
 
 $criticalParams = @(
-    "/myordering/$Env/db/host",
-    "/myordering/$Env/redis/host",
-    "/myordering/$Env/cognito/user-pool-id",
-    "/myordering/$Env/eventbridge/bus-name",
-    "/myordering/$Env/stripe/secret-key"
+    "/myordering/$Environment/db/host",
+    "/myordering/$Environment/redis/host",
+    "/myordering/$Environment/cognito/user-pool-id",
+    "/myordering/$Environment/eventbridge/bus-name",
+    "/myordering/$Environment/stripe/secret-key"
 )
 
 foreach ($param in $criticalParams) {

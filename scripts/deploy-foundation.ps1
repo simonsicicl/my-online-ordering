@@ -4,7 +4,7 @@
 # Safe to re-run — CloudFormation will only update changed resources.
 #
 # Usage:
-#   .\scripts\deploy-foundation.ps1 -Env dev -Profile myordering-dev
+#   .\scripts\deploy-foundation.ps1 -Environment dev -Profile myordering-dev
 #
 # You will be prompted for DBMasterPassword on first run.
 # On subsequent runs (updates), provide the same password.
@@ -12,7 +12,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("dev", "staging", "prod")]
-    [string]$Env,
+    [string]$Environment,
 
     [Parameter(Mandatory = $false)]
     [string]$Profile = "default",
@@ -26,12 +26,12 @@ $ErrorActionPreference = "Stop"
 function Write-Step { param([string]$msg) Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Write-OK   { param([string]$msg) Write-Host "    [OK] $msg" -ForegroundColor Green }
 
-$stackName    = "myordering-foundation-$Env"
+$stackName    = "myordering-foundation-$Environment"
 $templatePath = "infrastructure/foundation/template.yaml"
-$outputFile   = "infrastructure/params/$Env.outputs.json"
+$outputFile   = "infrastructure/params/$Environment.outputs.json"
 
 Write-Host "`n============================================" -ForegroundColor Magenta
-Write-Host "  Foundation Deploy — Environment: $Env" -ForegroundColor Magenta
+Write-Host "  Foundation Deploy -- Environment: $Environment" -ForegroundColor Magenta
 Write-Host "============================================`n" -ForegroundColor Magenta
 
 # ── PROMPT FOR DB PASSWORD ────────────────────────────────────────────────────
@@ -54,18 +54,22 @@ if ($LASTEXITCODE -ne 0) { Write-Host "[ERROR] sam build failed." -ForegroundCol
 Write-OK "Build complete"
 
 # ── SAM DEPLOY ────────────────────────────────────────────────────────────────
-Write-Step "Deploying foundation stack to AWS ($Env)..."
+Write-Step "Deploying foundation stack to AWS ($Environment)..."
 Write-Host "    Stack name: $stackName"
 Write-Host "    This may take 10-20 minutes on first run (RDS takes time to provision)."
 Write-Host ""
 
+# Fetch current public IP for RDS security group inbound rule
+$myIp = (Invoke-RestMethod -Uri 'https://checkip.amazonaws.com').Trim()
+Write-OK "Your current IP: $myIp (set as DevMyIPCidr)"
+
 sam deploy `
-    --template-file $templatePath `
+    --config-file infrastructure/samconfig.toml `
+    --config-env $Environment `
     --stack-name $stackName `
-    --parameter-overrides "AppEnv=$Env DBMasterPassword=$dbPasswordPlain" `
-    --capabilities CAPABILITY_IAM `
-    --profile $Profile `
-    --region $Region `
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
+    --parameter-overrides "AppEnv=$Environment DBMasterPassword=$dbPasswordPlain DevMyIPCidr=$myIp/32" `
+    --no-confirm-changeset `
     --no-fail-on-empty-changeset
 
 if ($LASTEXITCODE -ne 0) { Write-Host "[ERROR] sam deploy failed." -ForegroundColor Red; exit 1 }
@@ -83,6 +87,7 @@ $outputs = aws cloudformation describe-stacks `
     --query "Stacks[0].Outputs" `
     --output json
 
+
 $outputs | Out-File -FilePath $outputFile -Encoding UTF8
 Write-OK "Outputs saved to $outputFile"
 
@@ -94,5 +99,5 @@ foreach ($output in $outputObj) {
 
 Write-Host "`n============================================" -ForegroundColor Green
 Write-Host "  Foundation stack deployed successfully." -ForegroundColor Green
-Write-Host "  Next step: .\scripts\bootstrap-ssm.ps1 -Env $Env -Profile $Profile" -ForegroundColor Green
+Write-Host "  Next step: .\scripts\bootstrap-ssm.ps1 -Environment $Environment -Profile $Profile" -ForegroundColor Green
 Write-Host "============================================`n" -ForegroundColor Green
