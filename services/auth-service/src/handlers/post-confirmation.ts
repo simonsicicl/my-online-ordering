@@ -8,7 +8,7 @@ export const handler: PostConfirmationTriggerHandler = async (event) => {
 
   console.log(JSON.stringify({ level: 'info', message: 'post-confirmation trigger fired', userId: sub, email }));
 
-  await db.transaction(async (tx) => {
+  await db.transaction(async (tx: typeof db) => {
     await tx.insert(users).values({
       id:            sub,
       email:         email ?? '',
