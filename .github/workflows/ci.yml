@@ -17,6 +17,10 @@ jobs:
           use-installer: true
       - name: Validate foundation template
         run: sam validate --template infrastructure/foundation/template.yaml --region us-east-1
+      - name: Validate auth-service template
+        run: sam validate --template services/auth-service/template.yaml --region us-east-1
+      - name: Validate store-service template
+        run: sam validate --template services/store-service/template.yaml --region us-east-1
 
   build-and-test:
     name: Build & Typecheck
@@ -31,6 +35,10 @@ jobs:
       - run: npm ci
       - name: Typecheck shared-types
         run: npm run typecheck --workspace=packages/shared-types
+      - name: Typecheck auth-service
+        run: npm run typecheck --workspace=services/auth-service
+      - name: Typecheck store-service
+        run: npm run typecheck --workspace=services/store-service
 
   deploy-dev:
     name: Deploy to Dev
@@ -54,6 +62,52 @@ jobs:
           sam build --template foundation/template.yaml
           sam deploy --config-file samconfig.toml --config-env dev --stack-name myordering-foundation-dev --no-confirm-changeset --no-fail-on-empty-changeset
 
+      - name: Validate auth-service SAM template
+        run: sam validate --template services/auth-service/template.yaml --region us-east-1
+
+      - name: Build auth-service
+        working-directory: services/auth-service
+        run: sam build
+
+      - name: Deploy auth-service
+        working-directory: services/auth-service
+        run: |
+          sam deploy \
+            --stack-name myordering-auth-service-dev \
+            --region us-east-1 \
+            --parameter-overrides AppEnv=dev \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      - name: Fetch TokenValidator ARN
+        id: auth_outputs
+        run: |
+          ARN=$(aws cloudformation describe-stacks \
+            --stack-name myordering-auth-service-dev \
+            --region us-east-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='TokenValidatorArn'].OutputValue" \
+            --output text)
+          echo "token_validator_arn=$ARN" >> $GITHUB_OUTPUT
+
+      - name: Validate store-service SAM template
+        run: sam validate --template services/store-service/template.yaml --region us-east-1
+
+      - name: Build store-service
+        working-directory: services/store-service
+        run: sam build
+
+      - name: Deploy store-service
+        working-directory: services/store-service
+        run: |
+          sam deploy \
+            --stack-name myordering-store-service-dev \
+            --region us-east-1 \
+            --parameter-overrides "AppEnv=dev AuthorizerArn=${{ steps.auth_outputs.outputs.token_validator_arn }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
   deploy-prod:
     name: Deploy to Prod
     runs-on: ubuntu-latest
@@ -75,3 +129,49 @@ jobs:
         run: |
           sam build --template foundation/template.yaml
           sam deploy --config-file samconfig.toml --config-env prod --stack-name myordering-foundation-prod --no-confirm-changeset --no-fail-on-empty-changeset
+
+      - name: Validate auth-service SAM template
+        run: sam validate --template services/auth-service/template.yaml --region us-east-1
+
+      - name: Build auth-service
+        working-directory: services/auth-service
+        run: sam build
+
+      - name: Deploy auth-service
+        working-directory: services/auth-service
+        run: |
+          sam deploy \
+            --stack-name myordering-auth-service-prod \
+            --region us-east-1 \
+            --parameter-overrides AppEnv=prod \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
+
+      - name: Fetch TokenValidator ARN
+        id: auth_outputs
+        run: |
+          ARN=$(aws cloudformation describe-stacks \
+            --stack-name myordering-auth-service-prod \
+            --region us-east-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='TokenValidatorArn'].OutputValue" \
+            --output text)
+          echo "token_validator_arn=$ARN" >> $GITHUB_OUTPUT
+
+      - name: Validate store-service SAM template
+        run: sam validate --template services/store-service/template.yaml --region us-east-1
+
+      - name: Build store-service
+        working-directory: services/store-service
+        run: sam build
+
+      - name: Deploy store-service
+        working-directory: services/store-service
+        run: |
+          sam deploy \
+            --stack-name myordering-store-service-prod \
+            --region us-east-1 \
+            --parameter-overrides "AppEnv=prod AuthorizerArn=${{ steps.auth_outputs.outputs.token_validator_arn }}" \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset
