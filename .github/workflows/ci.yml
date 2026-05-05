@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD
 
 on:
   push:
@@ -7,106 +7,71 @@ on:
     branches: [main, develop]
 
 jobs:
-  # Run tests for all branches
-  lint-and-test:
+  validate:
+    name: Validate SAM Templates
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      - name: Validate foundation template
+        run: sam validate --template infrastructure/foundation/template.yaml --lint
+
+  build-and-test:
+    name: Build & Typecheck
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-      
-      - name: Install dependencies
-        run: pnpm install
-      
-      - name: Lint
-        run: pnpm lint
-      
-      - name: Build
-        run: pnpm build
-      
-      - name: Test
-        run: pnpm test
-      
-      - name: Generate coverage report
-        run: pnpm test:coverage
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          cache: 'npm'
+      - run: npm ci
+      - name: Typecheck shared-types
+        run: npm run typecheck --workspace=packages/shared-types
 
-  # Auto-deploy to Staging only for develop branch
-  deploy-staging:
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    needs: build-and-test
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-    needs: lint-and-test
-    runs-on: ubuntu-latest
-    environment:
-      name: staging
-      url: https://staging.myordering.com
-    
+    environment: dev
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/setup-sam@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      
-      - name: Deploy to AWS Lambda (Staging)
+          use-installer: true
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_DEV }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_DEV }}
+          aws-region: ap-northeast-1
+      - name: Deploy foundation
+        working-directory: infrastructure
         run: |
-          # Deploy Lambda functions
-          # Update API Gateway
-          # Run database migrations
-          echo "Deploying to staging..."
-      
-      - name: Run smoke tests
-        run: |
-          # Verify staging environment
-          curl https://staging.myordering.com/health
+          sam build --template foundation/template.yaml
+          sam deploy --config-env dev --no-confirm-changeset --no-fail-on-empty-changeset
 
-  # Auto-deploy to Production only for main branch
-  deploy-production:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    needs: lint-and-test
+  deploy-prod:
+    name: Deploy to Prod
     runs-on: ubuntu-latest
-    environment:
-      name: production
-      url: https://myordering.com
-    
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: prod
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
-          aws-region: us-east-1
-      
-      - name: Deploy to AWS Lambda (Production)
+          aws-region: ap-northeast-1
+      - name: Deploy foundation
+        working-directory: infrastructure
         run: |
-          # Deploy Lambda functions
-          # Update API Gateway
-          # Run database migrations
-          echo "Deploying to production..."
-      
-      - name: Run smoke tests
-        run: |
-          # Verify production environment
-          curl https://myordering.com/health
-      
-      - name: Notify deployment success
-        run: |
-          # Send Slack notification or email
-          echo "Production deployment successful"
+          sam build --template foundation/template.yaml
+          sam deploy --config-env prod --no-confirm-changeset --no-fail-on-empty-changeset
