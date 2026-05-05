@@ -66,13 +66,12 @@ jobs:
         run: sam validate --template services/auth-service/template.yaml --region us-east-1
 
       - name: Build auth-service
-        working-directory: services/auth-service
-        run: sam build
+        run: sam build --template services/auth-service/template.yaml
 
       - name: Deploy auth-service
-        working-directory: services/auth-service
         run: |
           sam deploy \
+            --template-file .aws-sam/build/template.yaml \
             --stack-name myordering-auth-service-dev \
             --region us-east-1 \
             --parameter-overrides AppEnv=dev \
@@ -94,13 +93,12 @@ jobs:
         run: sam validate --template services/store-service/template.yaml --region us-east-1
 
       - name: Build store-service
-        working-directory: services/store-service
-        run: sam build
+        run: sam build --template services/store-service/template.yaml
 
       - name: Deploy store-service
-        working-directory: services/store-service
         run: |
           sam deploy \
+            --template-file .aws-sam/build/template.yaml \
             --stack-name myordering-store-service-dev \
             --region us-east-1 \
             --parameter-overrides "AppEnv=dev AuthorizerArn=${{ steps.auth_outputs.outputs.token_validator_arn }}" \
@@ -134,13 +132,12 @@ jobs:
         run: sam validate --template services/auth-service/template.yaml --region us-east-1
 
       - name: Build auth-service
-        working-directory: services/auth-service
-        run: sam build
+        run: sam build --template services/auth-service/template.yaml
 
       - name: Deploy auth-service
-        working-directory: services/auth-service
         run: |
           sam deploy \
+            --template-file .aws-sam/build/template.yaml \
             --stack-name myordering-auth-service-prod \
             --region us-east-1 \
             --parameter-overrides AppEnv=prod \
@@ -162,13 +159,12 @@ jobs:
         run: sam validate --template services/store-service/template.yaml --region us-east-1
 
       - name: Build store-service
-        working-directory: services/store-service
-        run: sam build
+        run: sam build --template services/store-service/template.yaml
 
       - name: Deploy store-service
-        working-directory: services/store-service
         run: |
           sam deploy \
+            --template-file .aws-sam/build/template.yaml \
             --stack-name myordering-store-service-prod \
             --region us-east-1 \
             --parameter-overrides "AppEnv=prod AuthorizerArn=${{ steps.auth_outputs.outputs.token_validator_arn }}" \

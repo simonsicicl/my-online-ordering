@@ -86,8 +86,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "auth-pre-signup-trigger-${AppEnv}"
-      Handler: src/handlers/pre-signup.handler
-      CodeUri: .
+      Handler: services/auth-service/src/handlers/pre-signup.handler
+      CodeUri: ../..  
       ReservedConcurrentExecutions: !Ref AWS::NoValue
       Environment:
         Variables:
@@ -101,7 +101,7 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/pre-signup.ts]
+        EntryPoints: [services/auth-service/src/handlers/pre-signup.ts]
 
   AuthPreSignupPermission:
     Type: AWS::Lambda::Permission
@@ -115,8 +115,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "auth-post-confirmation-trigger-${AppEnv}"
-      Handler: src/handlers/post-confirmation.handler
-      CodeUri: .
+      Handler: services/auth-service/src/handlers/post-confirmation.handler
+      CodeUri: ../..  
       VpcConfig:
         SubnetIds: !Ref LambdaSubnetIds
         SecurityGroupIds: [!Ref LambdaSecurityGroupId]
@@ -125,7 +125,7 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/post-confirmation.ts]
+        EntryPoints: [services/auth-service/src/handlers/post-confirmation.ts]
 
   AuthPostConfirmationPermission:
     Type: AWS::Lambda::Permission
@@ -141,8 +141,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "auth-token-validator-${AppEnv}"
-      Handler: src/handlers/token-validator.handler
-      CodeUri: .
+      Handler: services/auth-service/src/handlers/token-validator.handler
+      CodeUri: ../..  
       ReservedConcurrentExecutions: !Ref AWS::NoValue
       Environment:
         Variables:
@@ -156,15 +156,15 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/token-validator.ts]
+        EntryPoints: [services/auth-service/src/handlers/token-validator.ts]
 
   # ── API HANDLERS (in VPC — DB access required) ───────────────────────────────
   AuthRegisterFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "auth-register-handler-${AppEnv}"
-      Handler: src/handlers/register.handler
-      CodeUri: .
+      Handler: services/auth-service/src/handlers/register.handler
+      CodeUri: ../..  
       VpcConfig:
         SubnetIds: !Ref LambdaSubnetIds
         SecurityGroupIds: [!Ref LambdaSecurityGroupId]
@@ -180,14 +180,14 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/register.ts]
+        EntryPoints: [services/auth-service/src/handlers/register.ts]
 
   AuthLoginFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "auth-login-handler-${AppEnv}"
-      Handler: src/handlers/login.handler
-      CodeUri: .
+      Handler: services/auth-service/src/handlers/login.handler
+      CodeUri: ../..  
       VpcConfig:
         SubnetIds: !Ref LambdaSubnetIds
         SecurityGroupIds: [!Ref LambdaSecurityGroupId]
@@ -203,14 +203,14 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/login.ts]
+        EntryPoints: [services/auth-service/src/handlers/login.ts]
 
   AuthRefreshFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "auth-refresh-handler-${AppEnv}"
-      Handler: src/handlers/refresh.handler
-      CodeUri: .
+      Handler: services/auth-service/src/handlers/refresh.handler
+      CodeUri: ../..  
       Events:
         ApiEvent:
           Type: HttpApi
@@ -223,14 +223,14 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/refresh.ts]
+        EntryPoints: [services/auth-service/src/handlers/refresh.ts]
 
   AuthLogoutFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "auth-logout-handler-${AppEnv}"
-      Handler: src/handlers/logout.handler
-      CodeUri: .
+      Handler: services/auth-service/src/handlers/logout.handler
+      CodeUri: ../..  
       Events:
         ApiEvent:
           Type: HttpApi
@@ -243,7 +243,7 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/logout.ts]
+        EntryPoints: [services/auth-service/src/handlers/logout.ts]
 
   # ── SSM: export TokenValidator ARN for other service stacks ──────────────────
   SSMTokenValidatorArn:

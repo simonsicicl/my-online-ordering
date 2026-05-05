@@ -119,8 +119,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "store-get-handler-${AppEnv}"
-      Handler: src/handlers/get.handler
-      CodeUri: .
+      Handler: services/store-service/src/handlers/get.handler
+      CodeUri: ../..  
       Events:
         ApiEvent:
           Type: HttpApi
@@ -135,14 +135,14 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/get.ts]
+        EntryPoints: [services/store-service/src/handlers/get.ts]
 
   StoreCreateFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "store-create-handler-${AppEnv}"
-      Handler: src/handlers/create.handler
-      CodeUri: .
+      Handler: services/store-service/src/handlers/create.handler
+      CodeUri: ../..  
       Events:
         ApiEvent:
           Type: HttpApi
@@ -155,14 +155,14 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/create.ts]
+        EntryPoints: [services/store-service/src/handlers/create.ts]
 
   StoreUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "store-update-handler-${AppEnv}"
-      Handler: src/handlers/update.handler
-      CodeUri: .
+      Handler: services/store-service/src/handlers/update.handler
+      CodeUri: ../..  
       Events:
         ApiEvent:
           Type: HttpApi
@@ -175,14 +175,14 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/update.ts]
+        EntryPoints: [services/store-service/src/handlers/update.ts]
 
   StoreUpdateStatusFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "store-update-status-handler-${AppEnv}"
-      Handler: src/handlers/update-status.handler
-      CodeUri: .
+      Handler: services/store-service/src/handlers/update-status.handler
+      CodeUri: ../..  
       Events:
         ApiEvent:
           Type: HttpApi
@@ -195,7 +195,7 @@ Resources:
       BuildProperties:
         Minify: true
         Target: es2022
-        EntryPoints: [src/handlers/update-status.ts]
+        EntryPoints: [services/store-service/src/handlers/update-status.ts]
 
 Outputs:
   StoreApiUrl:
