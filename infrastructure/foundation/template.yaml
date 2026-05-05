@@ -268,6 +268,76 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  # ── S3 (FRONTEND) ───────────────────────────────────────────────────────
+  # Hosts built artifacts for user-client, merchant-dashboard, kds.
+  # kiosk and pos are Electron apps — not deployed here.
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "myordering-frontend-${AppEnv}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Statement:
+          - Sid: AllowCloudFrontOAC
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${FrontendBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  # ── CLOUDFRONT ────────────────────────────────────────────────────────────
+
+  CloudFrontOAC:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "myordering-oac-${AppEnv}"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "myordering frontend - ${AppEnv}"
+        DefaultRootObject: index.html
+        # SPA fallback: return index.html for all 403/404 so React Router works
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        Origins:
+          - Id: FrontendS3Origin
+            DomainName: !GetAtt FrontendBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+            OriginAccessControlId: !Ref CloudFrontOAC
+        DefaultCacheBehavior:
+          TargetOriginId: FrontendS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized (AWS managed)
+          AllowedMethods: [GET, HEAD, OPTIONS]
+        HttpVersion: http2
+        PriceClass: PriceClass_100  # US/Canada/Europe only — stays within Free Tier 1TB/month
+
   # ── SSM PARAMETERS (non-secret — written by this stack) ──────────────────
   # Secrets (DB password, Stripe keys) are written by bootstrap-ssm.ps1
 
@@ -355,6 +425,20 @@ Resources:
       Type: String
       Value: !Ref AssetsBucket
 
+  SSMFrontendBucket:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/s3/frontend-bucket-name"
+      Type: String
+      Value: !Ref FrontendBucket
+
+  SSMCloudFrontDomain:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/cloudfront/domain"
+      Type: String
+      Value: !GetAtt CloudFrontDistribution.DomainName
+
 # ── OUTPUTS ───────────────────────────────────────────────────────────────────
 # These are captured by deploy-foundation.ps1 into infrastructure/params/{env}.outputs.json
 # and referenced by service stacks and scripts.
@@ -424,3 +508,18 @@ Outputs:
     Value: !Ref AssetsBucket
     Export:
       Name: !Sub "myordering-AssetsBucketName-${AppEnv}"
+
+  FrontendBucketName:
+    Value: !Ref FrontendBucket
+    Export:
+      Name: !Sub "myordering-FrontendBucketName-${AppEnv}"
+
+  CloudFrontDomain:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub "myordering-CloudFrontDomain-${AppEnv}"
+
+  CloudFrontDistributionId:
+    Value: !Ref CloudFrontDistribution
+    Export:
+      Name: !Sub "myordering-CloudFrontDistributionId-${AppEnv}"

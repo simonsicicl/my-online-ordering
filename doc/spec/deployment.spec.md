@@ -31,11 +31,12 @@ Git
 ```text
 Step 1: AWS Account Bootstrap (one-time, manual)
 Step 2: GitHub Secrets Setup (one-time, manual)
-Step 3: Foundation Stack Deploy (RDS, Redis, Cognito, EventBridge)
+Step 3: Foundation Stack Deploy (RDS, Redis, Cognito, EventBridge, CloudFront)
 Step 4: SSM Parameters Bootstrap
 Step 5: DB Migration
 Step 6: Services Deploy (each service's SAM stack)
 Step 7: Verify
+Step 8: Frontend Deploy (build + S3 sync + CloudFront invalidation)
 ```
 
 ---
@@ -83,6 +84,8 @@ The foundation stack provisions all shared infrastructure:
 - Cognito User Pool + App Client
 - EventBridge Custom Bus
 - S3 Bucket (assets)
+- S3 Bucket (frontend — hosts user-client, merchant-dashboard, kds)
+- CloudFront Distribution (serves frontend bucket via OAC, HTTPS only)
 
 ```powershell
 # Run from repo root
@@ -102,6 +105,8 @@ The foundation stack provisions all shared infrastructure:
 - A running Redis cluster
 - A Cognito User Pool with its Pool ID
 - An EventBridge bus named `my-ordering-system-event-bus-{env}`
+- A CloudFront distribution (domain recorded in `{env}.outputs.json`)
+- An empty frontend S3 bucket (content deployed separately in Step 8)
 
 ---
 
@@ -174,6 +179,43 @@ Checks:
 
 ---
 
+## Step 8: Frontend Deploy
+
+> **When to run**: Only after Step 6 (services) is complete and API Gateway URL is recorded in `{env}.outputs.json`.
+> Not required in Phase 1-3 (no frontend apps exist yet). First needed in v0.1.0 Phase 4 (Weeks 13-16).
+
+Deploy each web app individually:
+
+```powershell
+# Deploy user-client (customer PWA)
+.\scripts\deploy-frontend.ps1 -App user-client -Env dev -Profile myordering-dev
+
+# Deploy merchant-dashboard
+.\scripts\deploy-frontend.ps1 -App merchant-dashboard -Env dev -Profile myordering-dev
+
+# Deploy kds (kitchen display)
+.\scripts\deploy-frontend.ps1 -App kds -Env dev -Profile myordering-dev
+```
+
+> **Note**: `kiosk` and `pos` are Electron apps — they are packaged and distributed separately, not deployed to CloudFront.
+
+**What this script does:**
+
+1. Reads `FrontendBucketName`, `CloudFrontDistributionId`, `CloudFrontDomain` from `{env}.outputs.json`
+2. Runs `npm ci && npm run build` inside `frontend/{app}/`
+3. Syncs `dist/` to `s3://frontend-bucket/{app}/` (with `--delete`)
+4. Uploads `index.html` separately with `no-cache` headers (SPA routing requirement)
+5. Creates a CloudFront invalidation for `/{app}/*`
+6. Prints the live URL: `https://{cloudfront-domain}/{app}/`
+
+**After this step you will have:**
+
+- All three web apps accessible via CloudFront HTTPS URLs
+- `index.html` always fresh (no stale SPA shell)
+- Static assets (JS/CSS) cached for 1 year (content-hashed filenames)
+
+---
+
 ## Switching AWS Accounts (Free Tier Reset)
 
 When you need to move to a new AWS account:
@@ -186,11 +228,15 @@ aws configure --profile myordering-dev-new
 $env:AWS_PROFILE = "myordering-dev-new"
 
 # 3. Run all steps in order
-.\scripts\deploy-foundation.ps1 -Env dev -Profile myordering-dev-new
-.\scripts\bootstrap-ssm.ps1    -Env dev -Profile myordering-dev-new
-.\scripts\migrate.ps1           -Env dev -Profile myordering-dev-new
-.\scripts\deploy-services.ps1   -Env dev -Profile myordering-dev-new
-.\scripts\verify-deployment.ps1 -Env dev -Profile myordering-dev-new
+.\scripts\deploy-foundation.ps1  -Env dev -Profile myordering-dev-new
+.\scripts\bootstrap-ssm.ps1     -Env dev -Profile myordering-dev-new
+.\scripts\migrate.ps1            -Env dev -Profile myordering-dev-new
+.\scripts\deploy-services.ps1    -Env dev -Profile myordering-dev-new
+.\scripts\verify-deployment.ps1  -Env dev -Profile myordering-dev-new
+# Run Step 8 only if frontend apps have been built (v0.1.0 Phase 4+)
+.\scripts\deploy-frontend.ps1    -App user-client         -Env dev -Profile myordering-dev-new
+.\scripts\deploy-frontend.ps1    -App merchant-dashboard  -Env dev -Profile myordering-dev-new
+.\scripts\deploy-frontend.ps1    -App kds                 -Env dev -Profile myordering-dev-new
 ```
 
 > ⚠️ After switching accounts, update GitHub Secrets (Step 2) with the new account's credentials.
