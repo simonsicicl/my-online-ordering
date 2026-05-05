@@ -60,7 +60,9 @@ $env:DATABASE_PORT     = $dbPort
 $env:DATABASE_NAME     = $dbName
 $env:DATABASE_USER     = $dbUser
 $env:DATABASE_PASSWORD = $dbPassword
-$env:DATABASE_SSL      = if ($Environment -eq "dev") { "false" } else { "true" }
+$env:DATABASE_SSL      = if ($Environment -eq "dev") { "true" } else { "true" }
+# Allow self-signed certs (RDS uses AWS CA — trust it without validating chain locally)
+$env:NODE_TLS_REJECT_UNAUTHORIZED = "0"
 
 # ── RUN DRIZZLE-KIT PUSH ──────────────────────────────────────────────────────
 Write-Step "Running Drizzle migration (drizzle-kit push)..."
@@ -69,7 +71,8 @@ Write-Host ""
 
 # drizzle-kit push applies schema changes directly (no migration files needed for early dev)
 # Switch to drizzle-kit migrate when moving to staging/prod
-npx drizzle-kit push --config=drizzle.config.ts
+# Note: drizzle-kit v0.20.x uses 'push:pg' — v0.21+ uses 'push'
+npx drizzle-kit push:pg --config=drizzle.config.ts
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "`n[ERROR] Migration failed. Check the error above." -ForegroundColor Red

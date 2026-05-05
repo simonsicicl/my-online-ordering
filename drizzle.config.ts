@@ -7,7 +7,7 @@ import type { Config } from 'drizzle-kit';
 export default {
   schema: './services/*/src/db/schema.ts',   // glob: all service schemas
   out:    './infrastructure/migrations',      // generated migration files
-  dialect: 'postgresql',
+  driver: 'pg',
   dbCredentials: {
     host:     process.env.DATABASE_HOST     ?? 'localhost',
     port:     parseInt(process.env.DATABASE_PORT ?? '5432', 10),
