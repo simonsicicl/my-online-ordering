@@ -52,7 +52,7 @@ jobs:
         working-directory: infrastructure
         run: |
           sam build --template foundation/template.yaml
-          sam deploy --config-env dev --no-confirm-changeset --no-fail-on-empty-changeset
+          sam deploy --config-file samconfig.toml --config-env dev --stack-name myordering-foundation-dev --no-confirm-changeset --no-fail-on-empty-changeset
 
   deploy-prod:
     name: Deploy to Prod
@@ -74,4 +74,4 @@ jobs:
         working-directory: infrastructure
         run: |
           sam build --template foundation/template.yaml
-          sam deploy --config-env prod --no-confirm-changeset --no-fail-on-empty-changeset
+          sam deploy --config-file samconfig.toml --config-env prod --stack-name myordering-foundation-prod --no-confirm-changeset --no-fail-on-empty-changeset
