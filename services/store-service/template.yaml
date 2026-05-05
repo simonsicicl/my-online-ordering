@@ -1,0 +1,205 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Store Service — CRUD endpoints with Redis caching and EventBridge events
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures: [arm64]
+    Timeout: 30
+    MemorySize: 512
+    ReservedConcurrentExecutions: 50
+    Environment:
+      Variables:
+        NODE_ENV: !Ref NodeEnv
+        APP_ENV: !Ref AppEnv
+        DATABASE_HOST: !Ref DatabaseHost
+        DATABASE_PORT: !Ref DatabasePort
+        DATABASE_NAME: !Ref DatabaseName
+        DATABASE_USER: !Ref DatabaseUser
+        DATABASE_PASSWORD: !Ref DatabasePassword
+        DATABASE_SSL: "true"
+        DB_MAX_CONNECTIONS: "10"
+        REDIS_HOST: !Ref RedisHost
+        REDIS_PORT: !Ref RedisPort
+        EVENTBRIDGE_BUS_NAME: !Ref EventBridgeBusName
+    VpcConfig:
+      SubnetIds: !Ref LambdaSubnetIds
+      SecurityGroupIds: [!Ref LambdaSecurityGroupId]
+
+Parameters:
+  NodeEnv:
+    Type: String
+    Default: production
+  AppEnv:
+    Type: String
+    Default: dev
+
+  AuthorizerArn:
+    Type: String
+    Description: ARN of auth-token-validator Lambda — output of auth-service stack
+
+  # ── VPC ─────────────────────────────────────────────────────────────────────
+  LambdaSubnetIds:
+    Type: AWS::SSM::Parameter::Value<List<String>>
+    Default: /myordering/dev/vpc/private-subnet-ids
+  LambdaSecurityGroupId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/vpc/lambda-security-group-id
+
+  # ── Database ─────────────────────────────────────────────────────────────────
+  DatabaseHost:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/db/host
+  DatabasePort:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/db/port
+  DatabaseName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/db/name
+  DatabaseUser:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/db/username
+  DatabasePassword:
+    Type: AWS::SSM::Parameter::Value<SecureString>
+    Default: /myordering/dev/db/password
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  RedisHost:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/redis/host
+  RedisPort:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/redis/port
+
+  # ── EventBridge ──────────────────────────────────────────────────────────────
+  EventBridgeBusName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/eventbridge/bus-name
+
+Resources:
+
+  # ── API GATEWAY ──────────────────────────────────────────────────────────────
+  StoreApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref AppEnv
+      Auth:
+        DefaultAuthorizer: LambdaAuthorizer
+        Authorizers:
+          LambdaAuthorizer:
+            FunctionArn: !Ref AuthorizerArn
+            FunctionInvokeRole: !GetAtt AuthorizerInvokeRole.Arn
+            Identity:
+              Headers: [Authorization]
+            AuthorizerPayloadFormatVersion: "2.0"
+            EnableSimpleResponses: true
+
+  AuthorizerInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: apigateway.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: InvokeAuthorizerPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Ref AuthorizerArn
+
+  # ── LAMBDA FUNCTIONS ─────────────────────────────────────────────────────────
+
+  StoreGetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "store-get-handler-${AppEnv}"
+      Handler: src/handlers/get.handler
+      CodeUri: .
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref StoreApi
+            Path: /api/v1/stores/{storeId}
+            Method: GET
+            Auth:
+              Authorizer: NONE  # Public endpoint
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/get.ts]
+
+  StoreCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "store-create-handler-${AppEnv}"
+      Handler: src/handlers/create.handler
+      CodeUri: .
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref StoreApi
+            Path: /api/v1/stores
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/create.ts]
+
+  StoreUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "store-update-handler-${AppEnv}"
+      Handler: src/handlers/update.handler
+      CodeUri: .
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref StoreApi
+            Path: /api/v1/stores/{storeId}
+            Method: PATCH
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/update.ts]
+
+  StoreUpdateStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "store-update-status-handler-${AppEnv}"
+      Handler: src/handlers/update-status.handler
+      CodeUri: .
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref StoreApi
+            Path: /api/v1/stores/{storeId}/status
+            Method: PATCH
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/update-status.ts]
+
+Outputs:
+  StoreApiUrl:
+    Description: Store Service API Gateway URL
+    Value: !Sub "https://${StoreApi}.execute-api.${AWS::Region}.amazonaws.com/${AppEnv}"
+    Export:
+      Name: !Sub "myordering-StoreApiUrl-${AppEnv}"

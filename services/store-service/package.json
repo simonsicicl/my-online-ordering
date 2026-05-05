@@ -1,0 +1,23 @@
+{
+  "name": "@myordering/store-service",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "esbuild src/handlers/*.ts --bundle --platform=node --target=node20 --outdir=dist --external:@aws-sdk/*",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-eventbridge": "^3.600.0",
+    "@myordering/shared-types": "*",
+    "drizzle-orm": "0.30.10",
+    "postgres": "^3.4.4",
+    "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.140",
+    "@types/node": "^25.6.0",
+    "drizzle-kit": "^0.20.17",
+    "esbuild": "^0.21.5",
+    "typescript": "5.5.4"
+  }
+}
