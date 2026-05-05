@@ -209,3 +209,19 @@ __marimo__/
 .vscode/
 PROJECT_PROPOSAL.md
 CONCEPT.md
+
+# Node / monorepo
+node_modules/
+
+# AWS SAM build output
+.aws-sam/
+
+# Infrastructure — deploy outputs contain resource IDs (not secrets, but env-specific)
+infrastructure/params/*.outputs.json
+
+# Local env overrides
+*.env.local
+
+# TypeScript build output
+dist/
+.build/
