@@ -2,7 +2,7 @@ version = 0.1
 
 [default.global.parameters]
 stack_name        = "my-ordering-foundation"
-region            = "ap-northeast-1"
+region            = "us-east-1"
 confirm_changeset = true
 capabilities      = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
 
@@ -11,4 +11,4 @@ image_repositories = []
 
 [dev.deploy.parameters]
 s3_bucket           = "my-ordering-dev-sam-artifacts"
-parameter_overrides = "Environment=dev"
+parameter_overrides = "AppEnv=dev"

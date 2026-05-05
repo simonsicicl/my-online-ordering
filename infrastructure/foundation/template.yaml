@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  My Online Ordering System — Foundation Stack
+  My Online Ordering System ??Foundation Stack
   Provisions all shared infrastructure: VPC, RDS, Redis, Cognito, EventBridge, S3.
   Deploy this FIRST before any service stack.
   Re-running this template on a new account recreates everything from scratch.
@@ -12,12 +12,12 @@ Parameters:
     AllowedValues: [dev, staging, prod]
     Default: dev
 
-  # DB master password — passed in at deploy time, never hardcoded
+  # DB master password ??passed in at deploy time, never hardcoded
   DBMasterPassword:
     Type: String
     NoEcho: true
 
-  # Cognito — email used for system-generated emails (password reset, etc.)
+  # Cognito ??email used for system-generated emails (password reset, etc.)
   SESFromEmail:
     Type: String
     Default: noreply@myonlineordering.com
@@ -30,7 +30,7 @@ Parameters:
 
 Resources:
 
-  # ── VPC ───────────────────────────────────────────────────────────────────
+  # ?-?- VPC ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   VPC:
     Type: AWS::EC2::VPC
@@ -106,7 +106,7 @@ Resources:
       SubnetId: !Ref PublicSubnet2
       RouteTableId: !Ref PublicRouteTable
 
-  # ── SECURITY GROUPS ───────────────────────────────────────────────────────
+  # ?-?- SECURITY GROUPS ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   LambdaSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -145,7 +145,7 @@ Resources:
           ToPort: 6379
           SourceSecurityGroupId: !Ref LambdaSecurityGroup
 
-  # ── RDS POSTGRESQL ────────────────────────────────────────────────────────
+  # ?-?- RDS POSTGRESQL ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -157,12 +157,13 @@ Resources:
 
   RDSInstance:
     Type: AWS::RDS::DBInstance
-    DeletionPolicy: Snapshot   # Creates a snapshot before deletion — protects data
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
     Properties:
       DBInstanceIdentifier: !Sub "myordering-db-${AppEnv}"
       DBInstanceClass: db.t3.micro
       Engine: postgres
-      EngineVersion: "15.4"
+      EngineVersion: "15.12"
       MasterUsername: dbadmin
       MasterUserPassword: !Ref DBMasterPassword
       DBName: myordering
@@ -188,7 +189,7 @@ Resources:
       Parameters:
         max_connections: "87"        # 10 conns x 8 Lambdas + 7 buffer
 
-  # ── CLOUDWATCH ALARMS ─────────────────────────────────────────────────────
+  # ?-?- CLOUDWATCH ALARMS ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   AlarmTopic:
     Type: AWS::SNS::Topic
@@ -252,7 +253,7 @@ Resources:
         - !Ref AlarmTopic
       TreatMissingData: notBreaching
 
-  # ── ELASTICACHE REDIS ─────────────────────────────────────────────────────
+  # ?-?- ELASTICACHE REDIS ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   RedisSubnetGroup:
     Type: AWS::ElastiCache::SubnetGroup
@@ -274,7 +275,7 @@ Resources:
       VpcSecurityGroupIds:
         - !Ref RedisSecurityGroup
 
-  # ── COGNITO ───────────────────────────────────────────────────────────────
+  # ?-?- COGNITO ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
@@ -300,6 +301,17 @@ Resources:
           AttributeDataType: String
           Required: false
           Mutable: true
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub "myordering-client-${AppEnv}"
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
       # JWT tokens: 1hr access, 30d refresh
       TokenValidityUnits:
         AccessToken: hours
@@ -309,18 +321,7 @@ Resources:
       IdTokenValidity: 1
       RefreshTokenValidity: 30
 
-  CognitoUserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      ClientName: !Sub "myordering-client-${AppEnv}"
-      UserPoolId: !Ref CognitoUserPool
-      GenerateSecret: false         # false = usable from browser/mobile
-      ExplicitAuthFlows:
-        - ALLOW_USER_PASSWORD_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
-      PreventUserExistenceErrors: ENABLED
-
-  # ── EVENTBRIDGE ───────────────────────────────────────────────────────────
+  # ?-?- EVENTBRIDGE ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   EventBus:
     Type: AWS::Events::EventBus
@@ -334,7 +335,7 @@ Resources:
       QueueName: !Sub "event-processing-dlq-${AppEnv}"
       MessageRetentionPeriod: 1209600   # 14 days
 
-  # ── S3 (ASSETS) ───────────────────────────────────────────────────────────
+  # ?-?- S3 (ASSETS) ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   AssetsBucket:
     Type: AWS::S3::Bucket
@@ -352,9 +353,9 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
-  # ── S3 (FRONTEND) ───────────────────────────────────────────────────────
+  # ?-?- S3 (FRONTEND) ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
   # Hosts built artifacts for user-client, merchant-dashboard, kds.
-  # kiosk and pos are Electron apps — not deployed here.
+  # kiosk and pos are Electron apps ??not deployed here.
 
   FrontendBucket:
     Type: AWS::S3::Bucket
@@ -382,7 +383,7 @@ Resources:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
 
-  # ── CLOUDFRONT ────────────────────────────────────────────────────────────
+  # ?-?- CLOUDFRONT ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 
   CloudFrontOAC:
     Type: AWS::CloudFront::OriginAccessControl
@@ -420,9 +421,9 @@ Resources:
           CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6  # CachingOptimized (AWS managed)
           AllowedMethods: [GET, HEAD, OPTIONS]
         HttpVersion: http2
-        PriceClass: PriceClass_100  # US/Canada/Europe only — stays within Free Tier 1TB/month
+        PriceClass: PriceClass_100  # US/Canada/Europe only ??stays within Free Tier 1TB/month
 
-  # ── SSM PARAMETERS (non-secret — written by this stack) ──────────────────
+  # ?-?- SSM PARAMETERS (non-secret ??written by this stack) ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
   # Secrets (DB password, Stripe keys) are written by bootstrap-ssm.ps1
 
   SSMDBHost:
@@ -523,7 +524,7 @@ Resources:
       Type: String
       Value: !GetAtt CloudFrontDistribution.DomainName
 
-# ── OUTPUTS ───────────────────────────────────────────────────────────────────
+# ?-?- OUTPUTS ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 # These are captured by deploy-foundation.ps1 into infrastructure/params/{env}.outputs.json
 # and referenced by service stacks and scripts.
 
