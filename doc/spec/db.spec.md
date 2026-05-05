@@ -1,4 +1,5 @@
 # Database Spec — My Online Ordering System
+
 > Single source of truth for schema and DB rules. All implementations MUST comply.
 > Full detail: [DATABASE_SCHEMA.md](../DATABASE_SCHEMA.md)
 
@@ -21,7 +22,7 @@
 ## Redis Cache Keys
 
 | Key | TTL | Invalidate On |
-|-----|-----|---------------|
+| --- | --- | --- |
 | `menu:{storeId}` | 5 min | Menu item update/delete |
 | `store:{storeId}` | 10 min | Store config update |
 | `user:{userId}` | 15 min | User profile update |
@@ -507,6 +508,7 @@ export const storeStaff = pgTable('store_staff', {
 ## Critical Business Logic
 
 ### Combo Order Structure
+
 - `COMBO_PARENT`: Price container — does **NOT** consume inventory
 - `COMBO_CHILD`: Actual component — **DOES** consume inventory (linked via `parentOrderItemId`)
 - Each `ComboGroup` MUST have exactly one item with `isDefault: true`
@@ -521,6 +523,7 @@ for (const item of orderItems) {
 ```
 
 ### Recipe Evaluation (AND Logic)
+
 ```typescript
 async function compileRecipes(storeId: string, menuItemId: string, variantContext: Set<string>) {
   const allRecipes = await db.query.recipes.findMany({
@@ -539,11 +542,13 @@ async function compileRecipes(storeId: string, menuItemId: string, variantContex
 ```
 
 ### Financial Snapshots (CRITICAL)
+
 - `orderItems.priceAtOrder` = `menuItem.price` + sum of selected `priceDelta` values — snapshot at order creation
 - `orderItems.costAtOrder` = sum of `(recipe.quantityRequired × inventoryItem.costPerUnit)` — snapshot at order creation
 - Never recalculate from current prices — historical reports must stay accurate
 
 ### Stock Reservation (Atomic)
+
 ```typescript
 // Prevent negative stock with atomic conditional update
 await tx.update(inventoryItems)
@@ -560,6 +565,7 @@ await tx.update(inventoryItems)
 ```
 
 ### Display Order
+
 Always sort by `displayOrder` when rendering: categories, customizations, options, comboGroups, comboGroupItems.
 
 ---
