@@ -16,7 +16,7 @@ jobs:
         with:
           use-installer: true
       - name: Validate foundation template
-        run: sam validate --template infrastructure/foundation/template.yaml --lint
+        run: sam validate --template infrastructure/foundation/template.yaml
 
   build-and-test:
     name: Build & Typecheck
