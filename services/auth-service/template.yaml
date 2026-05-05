@@ -1,0 +1,267 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Auth Service — Cognito triggers, token validator, and auth API endpoints
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures: [arm64]
+    Timeout: 30
+    MemorySize: 512
+    ReservedConcurrentExecutions: 50
+    Environment:
+      Variables:
+        NODE_ENV: !Ref NodeEnv
+        APP_ENV: !Ref AppEnv
+        DATABASE_HOST: !Ref DatabaseHost
+        DATABASE_PORT: !Ref DatabasePort
+        DATABASE_NAME: !Ref DatabaseName
+        DATABASE_USER: !Ref DatabaseUser
+        DATABASE_PASSWORD: !Ref DatabasePassword
+        DATABASE_SSL: "true"
+        DB_MAX_CONNECTIONS: "10"
+        COGNITO_USER_POOL_ID: !Ref CognitoUserPoolId
+        COGNITO_CLIENT_ID: !Ref CognitoClientId
+        COGNITO_REGION: !Ref CognitoRegion
+
+Parameters:
+  NodeEnv:
+    Type: String
+    Default: production
+  AppEnv:
+    Type: String
+    Default: dev
+
+  # ── VPC (from foundation stack exports) ────────────────────────────────────
+  VpcId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/vpc/id
+  LambdaSubnetIds:
+    Type: AWS::SSM::Parameter::Value<List<String>>
+    Default: /myordering/dev/vpc/private-subnet-ids
+  LambdaSecurityGroupId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/vpc/lambda-security-group-id
+
+  # ── Database ────────────────────────────────────────────────────────────────
+  DatabaseHost:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/db/host
+  DatabasePort:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/db/port
+  DatabaseName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/db/name
+  DatabaseUser:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/db/username
+  DatabasePassword:
+    Type: AWS::SSM::Parameter::Value<SecureString>
+    Default: /myordering/dev/db/password
+
+  # ── Cognito ─────────────────────────────────────────────────────────────────
+  CognitoUserPoolId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/cognito/user-pool-id
+  CognitoClientId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/cognito/client-id
+  CognitoRegion:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /myordering/dev/cognito/region
+
+Resources:
+
+  # ── API GATEWAY ─────────────────────────────────────────────────────────────
+  # Auth endpoints are public — no default authorizer on this API
+  AuthApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref AppEnv
+
+  # ── COGNITO TRIGGERS ─────────────────────────────────────────────────────────
+  # These are NOT in VPC — no DB access needed
+  AuthPreSignupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "auth-pre-signup-trigger-${AppEnv}"
+      Handler: src/handlers/pre-signup.handler
+      CodeUri: .
+      ReservedConcurrentExecutions: !Ref AWS::NoValue
+      Environment:
+        Variables:
+          DATABASE_HOST: ""
+          DATABASE_PORT: ""
+          DATABASE_NAME: ""
+          DATABASE_USER: ""
+          DATABASE_PASSWORD: ""
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/pre-signup.ts]
+
+  AuthPreSignupPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AuthPreSignupFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}"
+
+  AuthPostConfirmationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "auth-post-confirmation-trigger-${AppEnv}"
+      Handler: src/handlers/post-confirmation.handler
+      CodeUri: .
+      VpcConfig:
+        SubnetIds: !Ref LambdaSubnetIds
+        SecurityGroupIds: [!Ref LambdaSecurityGroupId]
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/post-confirmation.ts]
+
+  AuthPostConfirmationPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AuthPostConfirmationFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${CognitoUserPoolId}"
+
+  # ── TOKEN VALIDATOR (Lambda Authorizer) ──────────────────────────────────────
+  # MUST NOT be in VPC — needs internet access to fetch Cognito JWKS
+  AuthTokenValidatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "auth-token-validator-${AppEnv}"
+      Handler: src/handlers/token-validator.handler
+      CodeUri: .
+      ReservedConcurrentExecutions: !Ref AWS::NoValue
+      Environment:
+        Variables:
+          DATABASE_HOST: ""
+          DATABASE_PORT: ""
+          DATABASE_NAME: ""
+          DATABASE_USER: ""
+          DATABASE_PASSWORD: ""
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/token-validator.ts]
+
+  # ── API HANDLERS (in VPC — DB access required) ───────────────────────────────
+  AuthRegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "auth-register-handler-${AppEnv}"
+      Handler: src/handlers/register.handler
+      CodeUri: .
+      VpcConfig:
+        SubnetIds: !Ref LambdaSubnetIds
+        SecurityGroupIds: [!Ref LambdaSecurityGroupId]
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref AuthApi
+            Path: /api/v1/auth/register
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/register.ts]
+
+  AuthLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "auth-login-handler-${AppEnv}"
+      Handler: src/handlers/login.handler
+      CodeUri: .
+      VpcConfig:
+        SubnetIds: !Ref LambdaSubnetIds
+        SecurityGroupIds: [!Ref LambdaSecurityGroupId]
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref AuthApi
+            Path: /api/v1/auth/login
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/login.ts]
+
+  AuthRefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "auth-refresh-handler-${AppEnv}"
+      Handler: src/handlers/refresh.handler
+      CodeUri: .
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref AuthApi
+            Path: /api/v1/auth/refresh
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/refresh.ts]
+
+  AuthLogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "auth-logout-handler-${AppEnv}"
+      Handler: src/handlers/logout.handler
+      CodeUri: .
+      Events:
+        ApiEvent:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref AuthApi
+            Path: /api/v1/auth/logout
+            Method: POST
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints: [src/handlers/logout.ts]
+
+  # ── SSM: export TokenValidator ARN for other service stacks ──────────────────
+  SSMTokenValidatorArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/auth/token-validator-arn"
+      Type: String
+      Value: !GetAtt AuthTokenValidatorFunction.Arn
+
+Outputs:
+  AuthApiUrl:
+    Description: Auth Service API Gateway URL
+    Value: !Sub "https://${AuthApi}.execute-api.${AWS::Region}.amazonaws.com/${AppEnv}"
+    Export:
+      Name: !Sub "myordering-AuthApiUrl-${AppEnv}"
+
+  TokenValidatorArn:
+    Description: ARN of the Lambda Authorizer — referenced by all other service stacks
+    Value: !GetAtt AuthTokenValidatorFunction.Arn
+    Export:
+      Name: !Sub "myordering-TokenValidatorArn-${AppEnv}"
