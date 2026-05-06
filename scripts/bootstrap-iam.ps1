@@ -72,13 +72,28 @@ $policyDocument = @"
     {
       "Sid": "S3SAMArtifacts",
       "Effect": "Allow",
-      "Action": ["s3:CreateBucket","s3:GetObject","s3:PutObject","s3:ListBucket","s3:DeleteObject","s3:GetBucketLocation","s3:GetBucketVersioning"],
-      "Resource": ["arn:aws:s3:::my-ordering-$Environment-sam-artifacts","arn:aws:s3:::my-ordering-$Environment-sam-artifacts/*"]
+      "Action": ["s3:CreateBucket","s3:GetObject","s3:PutObject","s3:ListBucket","s3:DeleteObject","s3:GetBucketLocation","s3:GetBucketVersioning","s3:PutBucketVersioning","s3:GetEncryptionConfiguration","s3:PutEncryptionConfiguration"],
+      "Resource": [
+        "arn:aws:s3:::my-ordering-$Environment-sam-artifacts",
+        "arn:aws:s3:::my-ordering-$Environment-sam-artifacts/*"
+      ]
     },
     {
       "Sid": "IAMForSAM",
       "Effect": "Allow",
       "Action": ["iam:CreateRole","iam:DeleteRole","iam:AttachRolePolicy","iam:DetachRolePolicy","iam:PutRolePolicy","iam:DeleteRolePolicy","iam:GetRole","iam:PassRole","iam:TagRole","iam:UntagRole","iam:UpdateRole","iam:CreateInstanceProfile","iam:DeleteInstanceProfile","iam:AddRoleToInstanceProfile","iam:RemoveRoleFromInstanceProfile"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "LambdaForSAM",
+      "Effect": "Allow",
+      "Action": ["lambda:*"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "APIGatewayForSAM",
+      "Effect": "Allow",
+      "Action": ["apigateway:*"],
       "Resource": "*"
     },
     {
