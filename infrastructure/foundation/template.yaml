@@ -524,6 +524,27 @@ Resources:
       Type: String
       Value: !GetAtt CloudFrontDistribution.DomainName
 
+  SSMVpcId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/vpc/id"
+      Type: String
+      Value: !Ref VPC
+
+  SSMPrivateSubnetIds:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/vpc/private-subnet-ids"
+      Type: String
+      Value: !Sub "${PrivateSubnet1},${PrivateSubnet2}"
+
+  SSMLambdaSecurityGroupId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "/myordering/${AppEnv}/vpc/lambda-security-group-id"
+      Type: String
+      Value: !Ref LambdaSecurityGroup
+
 # ?-?- OUTPUTS ?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-?-
 # These are captured by deploy-foundation.ps1 into infrastructure/params/{env}.outputs.json
 # and referenced by service stacks and scripts.
