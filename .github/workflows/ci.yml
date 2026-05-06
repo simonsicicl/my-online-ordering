@@ -79,6 +79,7 @@ jobs:
             --region us-east-1 \
             --parameter-overrides AppEnv=dev \
             --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
 
@@ -106,6 +107,7 @@ jobs:
             --region us-east-1 \
             --parameter-overrides "AppEnv=dev AuthorizerArn=${{ steps.auth_outputs.outputs.token_validator_arn }}" \
             --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
 
@@ -148,6 +150,7 @@ jobs:
             --region us-east-1 \
             --parameter-overrides AppEnv=prod \
             --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
 
@@ -175,5 +178,6 @@ jobs:
             --region us-east-1 \
             --parameter-overrides "AppEnv=prod AuthorizerArn=${{ steps.auth_outputs.outputs.token_validator_arn }}" \
             --capabilities CAPABILITY_IAM \
+            --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset
