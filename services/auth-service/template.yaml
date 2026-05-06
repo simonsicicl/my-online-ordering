@@ -8,7 +8,6 @@ Globals:
     Architectures: [arm64]
     Timeout: 30
     MemorySize: 512
-    ReservedConcurrentExecutions: 50
     Environment:
       Variables:
         NODE_ENV: !Ref NodeEnv
