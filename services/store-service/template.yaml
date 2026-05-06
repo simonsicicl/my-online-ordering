@@ -61,7 +61,7 @@ Parameters:
     Type: AWS::SSM::Parameter::Value<String>
     Default: /myordering/dev/db/username
   DatabasePassword:
-    Type: AWS::SSM::Parameter::Value<SecureString>
+    Type: AWS::SSM::Parameter::Value<String>
     Default: /myordering/dev/db/password
 
   # ── Redis ────────────────────────────────────────────────────────────────────
