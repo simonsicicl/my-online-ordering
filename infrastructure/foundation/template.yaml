@@ -535,7 +535,7 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: !Sub "/myordering/${AppEnv}/vpc/private-subnet-ids"
-      Type: String
+      Type: StringList
       Value: !Sub "${PrivateSubnet1},${PrivateSubnet2}"
 
   SSMLambdaSecurityGroupId:
