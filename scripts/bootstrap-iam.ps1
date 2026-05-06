@@ -99,7 +99,7 @@ $policyDocument = @"
     {
       "Sid": "FoundationResources",
       "Effect": "Allow",
-      "Action": ["ec2:*","rds:*","elasticache:*","cognito-idp:*","events:*","sqs:*","sns:*","cloudwatch:*","logs:*","ssm:GetParameter","ssm:PutParameter","ssm:DeleteParameter","ssm:DescribeParameters","cloudfront:*"],
+      "Action": ["ec2:*","rds:*","elasticache:*","cognito-idp:*","events:*","sqs:*","sns:*","cloudwatch:*","logs:*","ssm:GetParameter","ssm:GetParameters","ssm:GetParametersByPath","ssm:PutParameter","ssm:DeleteParameter","ssm:DescribeParameters","cloudfront:*"],
       "Resource": "*"
     }
   ]
